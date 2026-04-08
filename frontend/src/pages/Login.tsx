@@ -4,7 +4,7 @@ import { Hexagon, ArrowRight } from 'lucide-react'
 
 export default function Login() {
   const { login } = useAuth()
-  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -13,7 +13,7 @@ export default function Login() {
     e.preventDefault()
     setError('')
     setLoading(true)
-    try { await login(username, password) }
+    try { await login(email, password) }
     catch { setError('Invalid credentials') }
     finally { setLoading(false) }
   }
@@ -45,10 +45,10 @@ export default function Login() {
               </div>
             )}
             <div>
-              <label className="block text-xs font-medium text-gray-400 mb-2 uppercase tracking-wider">Username</label>
-              <input type="text" value={username} onChange={(e) => setUsername(e.target.value)}
+              <label className="block text-xs font-medium text-gray-400 mb-2 uppercase tracking-wider">Email</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-gray-500 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/40 focus:bg-white/[0.07] outline-none transition"
-                placeholder="Enter username" required autoFocus />
+                placeholder="Enter email" required autoFocus />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-400 mb-2 uppercase tracking-wider">Password</label>

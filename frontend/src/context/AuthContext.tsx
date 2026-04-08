@@ -1,53 +1,53 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
-import { login as apiLogin, getMe } from '../api/auth'
-import type { UserInfo } from '../types'
+import { supabase } from '../lib/supabase'
+import type { User, Session } from '@supabase/supabase-js'
 
 interface AuthContextType {
-  user: UserInfo | null
-  token: string | null
+  user: User | null
+  session: Session | null
   isAuthenticated: boolean
   loading: boolean
-  login: (username: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<void>
   logout: () => void
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<UserInfo | null>(null)
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('hive_token'))
+  const [user, setUser] = useState<User | null>(null)
+  const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (token) {
-      getMe()
-        .then(setUser)
-        .catch(() => {
-          localStorage.removeItem('hive_token')
-          setToken(null)
-        })
-        .finally(() => setLoading(false))
-    } else {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      setSession(s)
+      setUser(s?.user ?? null)
       setLoading(false)
-    }
-  }, [token])
+    })
 
-  const login = useCallback(async (username: string, password: string) => {
-    const resp = await apiLogin(username, password)
-    localStorage.setItem('hive_token', resp.access_token)
-    setToken(resp.access_token)
-    const me = await getMe()
-    setUser(me)
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s)
+      setUser(s?.user ?? null)
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
-  const logout = useCallback(() => {
-    localStorage.removeItem('hive_token')
-    setToken(null)
+  const login = useCallback(async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) throw error
+  }, [])
+
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut()
+    setSession(null)
     setUser(null)
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, token, isAuthenticated: !!token && !!user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, session, isAuthenticated: !!session, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   )

@@ -1,17 +1,17 @@
-import client from './client'
-import type { TokenResponse, UserInfo } from '../types'
+import { supabase } from '../lib/supabase'
 
-export async function login(username: string, password: string): Promise<TokenResponse> {
-  const { data } = await client.post<TokenResponse>('/auth/login', { username, password })
+export async function login(email: string, password: string) {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  if (error) throw error
   return data
 }
 
-export async function register(username: string, email: string, password: string): Promise<UserInfo> {
-  const { data } = await client.post<UserInfo>('/auth/register', { username, email, password })
-  return data
+export async function logout() {
+  const { error } = await supabase.auth.signOut()
+  if (error) throw error
 }
 
-export async function getMe(): Promise<UserInfo> {
-  const { data } = await client.get<UserInfo>('/auth/me')
-  return data
+export async function getSession() {
+  const { data: { session } } = await supabase.auth.getSession()
+  return session
 }

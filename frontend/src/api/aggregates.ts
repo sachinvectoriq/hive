@@ -1,4 +1,4 @@
-import client from './client'
+import { supabase } from '../lib/supabase'
 
 export interface ResourceGroupAggregate {
   name: string
@@ -40,21 +40,25 @@ export interface TaskAggregate {
 }
 
 export async function listResourceGroups(): Promise<ResourceGroupAggregate[]> {
-  const { data } = await client.get<ResourceGroupAggregate[]>('/api/resource-groups')
-  return data
+  const { data, error } = await supabase.rpc('get_resource_groups')
+  if (error) throw error
+  return (data ?? []) as ResourceGroupAggregate[]
 }
 
 export async function listAllGitRepos(): Promise<GitRepoAggregate[]> {
-  const { data } = await client.get<GitRepoAggregate[]>('/api/git-repos')
-  return data
+  const { data, error } = await supabase.from('git_repos_with_app').select('*')
+  if (error) throw error
+  return data as GitRepoAggregate[]
 }
 
 export async function listAllPeople(): Promise<PersonAggregate[]> {
-  const { data } = await client.get<PersonAggregate[]>('/api/people')
-  return data
+  const { data, error } = await supabase.from('people_with_app').select('*')
+  if (error) throw error
+  return data as PersonAggregate[]
 }
 
 export async function listAllTasks(): Promise<TaskAggregate[]> {
-  const { data } = await client.get<TaskAggregate[]>('/api/tasks')
-  return data
+  const { data, error } = await supabase.from('tasks_with_app').select('*')
+  if (error) throw error
+  return data as TaskAggregate[]
 }

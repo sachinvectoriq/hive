@@ -9,10 +9,9 @@ export default function Header() {
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2.5 px-3 py-1.5 bg-gray-50 rounded-lg">
           <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white text-[10px] font-bold">
-            {user?.username?.charAt(0).toUpperCase()}
+            {user?.email?.charAt(0).toUpperCase()}
           </div>
-          <span className="text-sm font-medium text-gray-700">{user?.username}</span>
-          <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded font-medium">{user?.role}</span>
+          <span className="text-sm font-medium text-gray-700">{user?.email}</span>
         </div>
         <button
           onClick={logout}
