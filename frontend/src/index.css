@@ -6,8 +6,8 @@
   to { opacity: 1; transform: translateY(0); }
 }
 @keyframes slide-in-right {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
+  from { opacity: 0; transform: translateX(100%); }
+  to { opacity: 1; transform: translateX(0); }
 }
 @keyframes scale-in {
   from { opacity: 0; transform: scale(0.96); }
@@ -20,18 +20,25 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
 }
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
 
-.animate-fade-in { animation: fade-in 0.35s ease-out both; }
-.animate-slide-in-right { animation: slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
-.animate-scale-in { animation: scale-in 0.25s ease-out both; }
+.animate-fade-in { animation: fade-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-slide-in-right { animation: slide-in-right 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-scale-in { animation: scale-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .animate-progress-fill { animation: progress-fill 0.8s ease-out both; }
 .animate-pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
 
-.stagger-1 { animation-delay: 40ms; }
-.stagger-2 { animation-delay: 80ms; }
-.stagger-3 { animation-delay: 120ms; }
-.stagger-4 { animation-delay: 160ms; }
-.stagger-5 { animation-delay: 200ms; }
+.stagger-1 { animation-delay: 50ms; }
+.stagger-2 { animation-delay: 100ms; }
+.stagger-3 { animation-delay: 150ms; }
+.stagger-4 { animation-delay: 200ms; }
+.stagger-5 { animation-delay: 250ms; }
+
+/* origin classes for dropdown menus */
+.origin-top-right { transform-origin: top right; }
 
 /* === Scrollbar === */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -43,5 +50,8 @@
 .focus-ring:focus { outline: none; box-shadow: 0 0 0 2px #818cf8; }
 
 /* === Card lift on hover === */
-.card-hover { transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s; }
-.card-hover:hover { box-shadow: 0 8px 25px -5px rgba(0,0,0,0.08); transform: translateY(-2px); border-color: #a5b4fc; }
+.card-hover { transition: box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease; }
+.card-hover:hover { box-shadow: 0 8px 30px -5px rgba(0,0,0,0.08), 0 4px 12px -4px rgba(0,0,0,0.04); transform: translateY(-2px); border-color: #a5b4fc; }
+
+/* === Selection === */
+::selection { background: #c7d2fe; color: #312e81; }

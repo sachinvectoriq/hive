@@ -6,7 +6,7 @@ import {
 const links = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/applications', icon: AppWindow, label: 'Applications' },
-  { to: '/resource-groups', icon: Layers, label: 'Resources' },
+  { to: '/resource-groups', icon: Layers, label: 'Resource Groups' },
   { to: '/git-repos', icon: GitBranch, label: 'Git Repos' },
   { to: '/people', icon: Users, label: 'People' },
   { to: '/tasks', icon: ClipboardList, label: 'Tasks' },
