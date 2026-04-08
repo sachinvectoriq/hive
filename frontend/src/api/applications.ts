@@ -5,6 +5,7 @@ import type {
   GitRepo,
   Resource,
   RoleAssignment,
+  Alert,
   Person,
   Task,
 } from '../types'
@@ -26,10 +27,11 @@ export async function getApplication(id: number): Promise<ApplicationDetail> {
     .single()
   if (appErr) throw appErr
 
-  const [repos, resources, roles, ppl, tks] = await Promise.all([
+  const [repos, resources, roles, alerts, ppl, tks] = await Promise.all([
     supabase.from('git_repos').select('*').eq('application_id', id),
     supabase.from('resources').select('*').eq('application_id', id),
     supabase.from('role_assignments').select('*').eq('application_id', id),
+    supabase.from('alerts').select('*').eq('application_id', id),
     supabase.from('people').select('*').eq('application_id', id),
     supabase.from('tasks').select('*').eq('application_id', id).order('created_at', { ascending: false }),
   ])
@@ -39,6 +41,7 @@ export async function getApplication(id: number): Promise<ApplicationDetail> {
     git_repos: repos.data ?? [],
     resources: resources.data ?? [],
     role_assignments: roles.data ?? [],
+    alerts: alerts.data ?? [],
     people: ppl.data ?? [],
     tasks: tks.data ?? [],
   } as ApplicationDetail
@@ -51,7 +54,7 @@ export async function createApplication(body: { name: string; description?: stri
     .select()
     .single()
   if (error) throw error
-  return { ...data, git_repos: [], resources: [], role_assignments: [], people: [], tasks: [] } as ApplicationDetail
+  return { ...data, git_repos: [], resources: [], role_assignments: [], alerts: [], people: [], tasks: [] } as ApplicationDetail
 }
 
 export async function deleteApplication(id: number): Promise<void> {
@@ -60,6 +63,7 @@ export async function deleteApplication(id: number): Promise<void> {
     supabase.from('git_repos').delete().eq('application_id', id),
     supabase.from('resources').delete().eq('application_id', id),
     supabase.from('role_assignments').delete().eq('application_id', id),
+    supabase.from('alerts').delete().eq('application_id', id),
     supabase.from('people').delete().eq('application_id', id),
     supabase.from('tasks').delete().eq('application_id', id),
   ])
@@ -68,10 +72,10 @@ export async function deleteApplication(id: number): Promise<void> {
 }
 
 // Git Repos
-export async function addGitRepo(_appId: number, body: { repo_name: string; owner?: string; link?: string }): Promise<GitRepo> {
+export async function addGitRepo(_appId: number, body: { repo_name: string; owner?: string; link?: string; branch?: string }): Promise<GitRepo> {
   const { data, error } = await supabase
     .from('git_repos')
-    .insert({ application_id: _appId, repo_name: body.repo_name, owner: body.owner ?? '', link: body.link ?? '' })
+    .insert({ application_id: _appId, repo_name: body.repo_name, owner: body.owner ?? '', link: body.link ?? '', branch: body.branch ?? '' })
     .select()
     .single()
   if (error) throw error
@@ -100,10 +104,10 @@ export async function deleteResource(_appId: number, resourceId: number): Promis
 }
 
 // Role Assignments
-export async function addRoleAssignment(appId: number, body: { resource_group: string; role_name: string; resource_name?: string }): Promise<RoleAssignment> {
+export async function addRoleAssignment(appId: number, body: { role: string; assigned_to?: string; scope?: string }): Promise<RoleAssignment> {
   const { data, error } = await supabase
     .from('role_assignments')
-    .insert({ application_id: appId, resource_group: body.resource_group, role_name: body.role_name, resource_name: body.resource_name ?? '' })
+    .insert({ application_id: appId, role: body.role, assigned_to: body.assigned_to ?? '', scope: body.scope ?? '' })
     .select()
     .single()
   if (error) throw error
@@ -112,6 +116,22 @@ export async function addRoleAssignment(appId: number, body: { resource_group: s
 
 export async function deleteRoleAssignment(_appId: number, roleId: number): Promise<void> {
   const { error } = await supabase.from('role_assignments').delete().eq('id', roleId)
+  if (error) throw error
+}
+
+// Alerts
+export async function addAlert(appId: number, body: { resource_group: string; alert_name: string; purpose?: string; resource_applied_to?: string }): Promise<Alert> {
+  const { data, error } = await supabase
+    .from('alerts')
+    .insert({ application_id: appId, resource_group: body.resource_group, alert_name: body.alert_name, purpose: body.purpose ?? '', resource_applied_to: body.resource_applied_to ?? '' })
+    .select()
+    .single()
+  if (error) throw error
+  return data as Alert
+}
+
+export async function deleteAlert(_appId: number, alertId: number): Promise<void> {
+  const { error } = await supabase.from('alerts').delete().eq('id', alertId)
   if (error) throw error
 }
 

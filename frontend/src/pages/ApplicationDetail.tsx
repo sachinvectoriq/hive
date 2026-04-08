@@ -2,13 +2,14 @@ import { useState, useEffect, type FormEvent } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ArrowLeft, GitBranch, Layers, Users, Shield, Plus, Trash2,
-  ExternalLink, ChevronDown, ChevronRight, ClipboardList, Calendar, Search,
+  ExternalLink, ChevronDown, ChevronRight, ClipboardList, Calendar, Search, Bell,
 } from 'lucide-react'
 import {
   getApplication, deleteApplication,
   addGitRepo, deleteGitRepo,
   addResource, deleteResource,
   addRoleAssignment, deleteRoleAssignment,
+  addAlert, deleteAlert,
   addPerson, deletePerson,
   addTask, updateTask, deleteTask,
   listResourceTypes,
@@ -127,12 +128,13 @@ function GitReposTab({ app, onRefresh }: { app: AppDetail; onRefresh: () => void
   const [repoName, setRepoName] = useState('')
   const [owner, setOwner] = useState('')
   const [link, setLink] = useState('')
+  const [branch, setBranch] = useState('')
 
   const handleAdd = async (e: FormEvent) => {
     e.preventDefault()
     if (!repoName.trim()) return
-    await addGitRepo(app.id, { repo_name: repoName.trim(), owner: owner.trim(), link: link.trim() })
-    setRepoName(''); setOwner(''); setLink(''); setShow(false)
+    await addGitRepo(app.id, { repo_name: repoName.trim(), owner: owner.trim(), link: link.trim(), branch: branch.trim() })
+    setRepoName(''); setOwner(''); setLink(''); setBranch(''); setShow(false)
     onRefresh()
   }
 
@@ -151,10 +153,12 @@ function GitReposTab({ app, onRefresh }: { app: AppDetail; onRefresh: () => void
 
       {show && (
         <form onSubmit={handleAdd} className="bg-gray-50 rounded-xl p-5 border border-gray-200 space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             <input type="text" placeholder="Repository name *" value={repoName} onChange={(e) => setRepoName(e.target.value)} required
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" />
             <input type="text" placeholder="Owner" value={owner} onChange={(e) => setOwner(e.target.value)}
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" />
+            <input type="text" placeholder="Branch (e.g. main)" value={branch} onChange={(e) => setBranch(e.target.value)}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" />
             <input type="text" placeholder="Link (URL)" value={link} onChange={(e) => setLink(e.target.value)}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" />
@@ -178,6 +182,7 @@ function GitReposTab({ app, onRefresh }: { app: AppDetail; onRefresh: () => void
               <tr>
                 <th className="px-5 py-3 font-medium">Repository</th>
                 <th className="px-5 py-3 font-medium">Owner</th>
+                <th className="px-5 py-3 font-medium">Branch</th>
                 <th className="px-5 py-3 font-medium">Link</th>
                 <th className="px-5 py-3 w-12"></th>
               </tr>
@@ -187,6 +192,7 @@ function GitReposTab({ app, onRefresh }: { app: AppDetail; onRefresh: () => void
                 <tr key={r.id} className="hover:bg-gray-50 transition">
                   <td className="px-5 py-3 font-medium text-gray-900">{r.repo_name}</td>
                   <td className="px-5 py-3 text-gray-600">{r.owner || '—'}</td>
+                  <td className="px-5 py-3 text-gray-600">{r.branch ? <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded">{r.branch}</span> : '—'}</td>
                   <td className="px-5 py-3">
                     {r.link ? (
                       <a href={r.link} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
@@ -215,22 +221,32 @@ function GitReposTab({ app, onRefresh }: { app: AppDetail; onRefresh: () => void
 function ResourceGroupsTab({ app, onRefresh }: { app: AppDetail; onRefresh: () => void }) {
   const [showResource, setShowResource] = useState(false)
   const [showRole, setShowRole] = useState(false)
+  const [showAlert, setShowAlert] = useState(false)
   const [rg, setRg] = useState('')
+  const [rgCustom, setRgCustom] = useState('')
   const [resName, setResName] = useState('')
   const [resType, setResType] = useState('')
   const [typeSearch, setTypeSearch] = useState('')
   const [showTypeDropdown, setShowTypeDropdown] = useState(false)
   const [resourceTypes, setResourceTypes] = useState<string[]>([])
   const [resTier, setResTier] = useState('')
-  const [roleRg, setRoleRg] = useState('')
-  const [roleName, setRoleName] = useState('')
-  const [roleRes, setRoleRes] = useState('')
+  const [roleRole, setRoleRole] = useState('')
+  const [roleAssignedTo, setRoleAssignedTo] = useState('')
+  const [roleScope, setRoleScope] = useState('')
+  const [alertRg, setAlertRg] = useState('')
+  const [alertRgCustom, setAlertRgCustom] = useState('')
+  const [alertName, setAlertName] = useState('')
+  const [alertPurpose, setAlertPurpose] = useState('')
+  const [alertResource, setAlertResource] = useState('')
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [search, setSearch] = useState('')
 
+  // Collect all existing resource group names for dropdown
+  const existingGroups = Array.from(new Set(app.resources.map((r) => r.resource_group))).sort()
+
   useEffect(() => {
     const groups = new Set(app.resources.map((r) => r.resource_group))
-    app.role_assignments.forEach((ra) => groups.add(ra.resource_group))
+    app.alerts.forEach((a) => groups.add(a.resource_group))
     setExpandedGroups(groups)
   }, [app])
 
@@ -247,19 +263,32 @@ function ResourceGroupsTab({ app, onRefresh }: { app: AppDetail; onRefresh: () =
     })
   }
 
+  const getSelectedRg = () => rg === '__new__' ? rgCustom.trim() : rg
+  const getSelectedAlertRg = () => alertRg === '__new__' ? alertRgCustom.trim() : alertRg
+
   const handleAddResource = async (e: FormEvent) => {
     e.preventDefault()
-    if (!rg.trim() || !resName.trim()) return
-    await addResource(app.id, { resource_group: rg.trim(), resource_name: resName.trim(), type: resType.trim(), tier_sku: resTier.trim() })
-    setRg(''); setResName(''); setResType(''); setTypeSearch(''); setResTier(''); setShowResource(false)
+    const selectedRg = getSelectedRg()
+    if (!selectedRg || !resName.trim()) return
+    await addResource(app.id, { resource_group: selectedRg, resource_name: resName.trim(), type: resType.trim(), tier_sku: resTier.trim() })
+    setRg(''); setRgCustom(''); setResName(''); setResType(''); setTypeSearch(''); setResTier(''); setShowResource(false)
     onRefresh()
   }
 
   const handleAddRole = async (e: FormEvent) => {
     e.preventDefault()
-    if (!roleRg.trim() || !roleName.trim()) return
-    await addRoleAssignment(app.id, { resource_group: roleRg.trim(), role_name: roleName.trim(), resource_name: roleRes.trim() })
-    setRoleRg(''); setRoleName(''); setRoleRes(''); setShowRole(false)
+    if (!roleRole.trim()) return
+    await addRoleAssignment(app.id, { role: roleRole.trim(), assigned_to: roleAssignedTo.trim(), scope: roleScope.trim() })
+    setRoleRole(''); setRoleAssignedTo(''); setRoleScope(''); setShowRole(false)
+    onRefresh()
+  }
+
+  const handleAddAlert = async (e: FormEvent) => {
+    e.preventDefault()
+    const selectedRg = getSelectedAlertRg()
+    if (!selectedRg || !alertName.trim()) return
+    await addAlert(app.id, { resource_group: selectedRg, alert_name: alertName.trim(), purpose: alertPurpose.trim(), resource_applied_to: alertResource.trim() })
+    setAlertRg(''); setAlertRgCustom(''); setAlertName(''); setAlertPurpose(''); setAlertResource(''); setShowAlert(false)
     onRefresh()
   }
 
@@ -273,9 +302,14 @@ function ResourceGroupsTab({ app, onRefresh }: { app: AppDetail; onRefresh: () =
     onRefresh()
   }
 
+  const handleDeleteAlert = async (alertId: number) => {
+    await deleteAlert(app.id, alertId)
+    onRefresh()
+  }
+
   const allGroups = new Set<string>()
   app.resources.forEach((r) => allGroups.add(r.resource_group))
-  app.role_assignments.forEach((ra) => allGroups.add(ra.resource_group))
+  app.alerts.forEach((a) => allGroups.add(a.resource_group))
   const groupNames = Array.from(allGroups).sort().filter(
     (g) => !search || g.toLowerCase().includes(search.toLowerCase())
   )
@@ -304,6 +338,9 @@ function ResourceGroupsTab({ app, onRefresh }: { app: AppDetail; onRefresh: () =
           <button onClick={() => setShowRole(!showRole)} className="flex items-center gap-2 text-sm text-violet-600 hover:text-violet-700 font-medium cursor-pointer">
             <Plus className="w-4 h-4" /> Add Role Assignment
           </button>
+          <button onClick={() => setShowAlert(!showAlert)} className="flex items-center gap-2 text-sm text-amber-600 hover:text-amber-700 font-medium cursor-pointer">
+            <Plus className="w-4 h-4" /> Add Alert
+          </button>
         </div>
       </div>
 
@@ -311,8 +348,18 @@ function ResourceGroupsTab({ app, onRefresh }: { app: AppDetail; onRefresh: () =
         <form onSubmit={handleAddResource} className="bg-gray-50 rounded-xl p-5 border border-gray-200 space-y-3">
           <p className="text-sm font-medium text-gray-700">New Resource</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <input type="text" placeholder="Resource Group *" value={rg} onChange={(e) => setRg(e.target.value)} required
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" />
+            <div>
+              <select value={rg} onChange={(e) => setRg(e.target.value)} required
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none bg-white cursor-pointer">
+                <option value="">Select Resource Group *</option>
+                {existingGroups.map((g) => <option key={g} value={g}>{g}</option>)}
+                <option value="__new__">+ New resource group...</option>
+              </select>
+              {rg === '__new__' && (
+                <input type="text" placeholder="New resource group name *" value={rgCustom} onChange={(e) => setRgCustom(e.target.value)} required
+                  className="w-full mt-2 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" />
+              )}
+            </div>
             <input type="text" placeholder="Resource Name *" value={resName} onChange={(e) => setResName(e.target.value)} required
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" />
             <div className="relative">
@@ -355,16 +402,46 @@ function ResourceGroupsTab({ app, onRefresh }: { app: AppDetail; onRefresh: () =
         <form onSubmit={handleAddRole} className="bg-violet-50 rounded-xl p-5 border border-violet-200 space-y-3">
           <p className="text-sm font-medium text-violet-700">New Role Assignment</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <input type="text" placeholder="Resource Group *" value={roleRg} onChange={(e) => setRoleRg(e.target.value)} required
+            <input type="text" placeholder="Role *" value={roleRole} onChange={(e) => setRoleRole(e.target.value)} required
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none" />
-            <input type="text" placeholder="Role Name *" value={roleName} onChange={(e) => setRoleName(e.target.value)} required
+            <input type="text" placeholder="Assigned To" value={roleAssignedTo} onChange={(e) => setRoleAssignedTo(e.target.value)}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none" />
-            <input type="text" placeholder="Resource Name" value={roleRes} onChange={(e) => setRoleRes(e.target.value)}
+            <input type="text" placeholder="Scope" value={roleScope} onChange={(e) => setRoleScope(e.target.value)}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none" />
           </div>
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => setShowRole(false)} className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 cursor-pointer">Cancel</button>
             <button type="submit" className="px-4 py-1.5 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700 transition cursor-pointer">Add</button>
+          </div>
+        </form>
+      )}
+
+      {showAlert && (
+        <form onSubmit={handleAddAlert} className="bg-amber-50 rounded-xl p-5 border border-amber-200 space-y-3">
+          <p className="text-sm font-medium text-amber-700">New Alert</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <select value={alertRg} onChange={(e) => setAlertRg(e.target.value)} required
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none bg-white cursor-pointer">
+                <option value="">Select Resource Group *</option>
+                {existingGroups.map((g) => <option key={g} value={g}>{g}</option>)}
+                <option value="__new__">+ New resource group...</option>
+              </select>
+              {alertRg === '__new__' && (
+                <input type="text" placeholder="New resource group name *" value={alertRgCustom} onChange={(e) => setAlertRgCustom(e.target.value)} required
+                  className="w-full mt-2 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none" />
+              )}
+            </div>
+            <input type="text" placeholder="Alert Name *" value={alertName} onChange={(e) => setAlertName(e.target.value)} required
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none" />
+            <input type="text" placeholder="Purpose" value={alertPurpose} onChange={(e) => setAlertPurpose(e.target.value)}
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none" />
+            <input type="text" placeholder="Resource Applied To" value={alertResource} onChange={(e) => setAlertResource(e.target.value)}
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none" />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setShowAlert(false)} className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 cursor-pointer">Cancel</button>
+            <button type="submit" className="px-4 py-1.5 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 transition cursor-pointer">Add</button>
           </div>
         </form>
       )}
@@ -378,7 +455,7 @@ function ResourceGroupsTab({ app, onRefresh }: { app: AppDetail; onRefresh: () =
         <div className="space-y-3">
           {groupNames.map((gName) => {
             const resources = app.resources.filter((r) => r.resource_group === gName)
-            const roles = app.role_assignments.filter((ra) => ra.resource_group === gName)
+            const alerts = app.alerts.filter((a) => a.resource_group === gName)
             const expanded = expandedGroups.has(gName)
 
             return (
@@ -392,8 +469,8 @@ function ResourceGroupsTab({ app, onRefresh }: { app: AppDetail; onRefresh: () =
                     <Layers className="w-4 h-4 text-sky-500" />
                     <span className="font-semibold text-gray-900">{gName}</span>
                     <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{resources.length} resources</span>
-                    {roles.length > 0 && (
-                      <span className="text-xs bg-violet-50 text-violet-600 px-2 py-0.5 rounded-full">{roles.length} roles</span>
+                    {alerts.length > 0 && (
+                      <span className="text-xs bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full">{alerts.length} alerts</span>
                     )}
                   </div>
                 </button>
@@ -428,26 +505,28 @@ function ResourceGroupsTab({ app, onRefresh }: { app: AppDetail; onRefresh: () =
                       </div>
                     )}
 
-                    {roles.length > 0 && (
-                      <div className="px-5 py-3 bg-violet-50/30">
+                    {alerts.length > 0 && (
+                      <div className="px-5 py-3 bg-amber-50/30">
                         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-                          <Shield className="w-3 h-3" /> Roles Assigned
+                          <Bell className="w-3 h-3" /> Alerts
                         </p>
                         <table className="w-full text-sm">
                           <thead className="text-gray-400 text-left text-xs">
                             <tr>
-                              <th className="pb-2 font-medium">Role Name</th>
-                              <th className="pb-2 font-medium">Resource</th>
+                              <th className="pb-2 font-medium">Alert Name</th>
+                              <th className="pb-2 font-medium">Purpose</th>
+                              <th className="pb-2 font-medium">Resource Applied To</th>
                               <th className="pb-2 w-8"></th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-50">
-                            {roles.map((ra) => (
-                              <tr key={ra.id} className="hover:bg-violet-50/50">
-                                <td className="py-2"><span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded">{ra.role_name}</span></td>
-                                <td className="py-2 text-gray-600">{ra.resource_name || '—'}</td>
+                            {alerts.map((a) => (
+                              <tr key={a.id} className="hover:bg-amber-50/50">
+                                <td className="py-2"><span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">{a.alert_name}</span></td>
+                                <td className="py-2 text-gray-600">{a.purpose || '—'}</td>
+                                <td className="py-2 text-gray-600">{a.resource_applied_to || '—'}</td>
                                 <td className="py-2">
-                                  <button onClick={() => handleDeleteRole(ra.id)} className="text-gray-300 hover:text-red-500 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                                  <button onClick={() => handleDeleteAlert(a.id)} className="text-gray-300 hover:text-red-500 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
                                 </td>
                               </tr>
                             ))}
@@ -460,6 +539,39 @@ function ResourceGroupsTab({ app, onRefresh }: { app: AppDetail; onRefresh: () =
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Role Assignments (application-wide, not per resource group) */}
+      {app.role_assignments.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <div className="px-5 py-4">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1">
+              <Shield className="w-3 h-3" /> Role Assignments
+            </p>
+            <table className="w-full text-sm">
+              <thead className="text-gray-400 text-left text-xs">
+                <tr>
+                  <th className="pb-2 font-medium">Role</th>
+                  <th className="pb-2 font-medium">Assigned To</th>
+                  <th className="pb-2 font-medium">Scope</th>
+                  <th className="pb-2 w-8"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {app.role_assignments.map((ra) => (
+                  <tr key={ra.id} className="hover:bg-violet-50/50">
+                    <td className="py-2"><span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded">{ra.role}</span></td>
+                    <td className="py-2 text-gray-600">{ra.assigned_to || '—'}</td>
+                    <td className="py-2 text-gray-600">{ra.scope || '—'}</td>
+                    <td className="py-2">
+                      <button onClick={() => handleDeleteRole(ra.id)} className="text-gray-300 hover:text-red-500 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

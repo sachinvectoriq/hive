@@ -3,7 +3,8 @@ import { supabase } from '../lib/supabase'
 export interface ResourceGroupAggregate {
   name: string
   resources: { id: number; application_id: number; resource_name: string; type: string; tier_sku: string; application: string }[]
-  role_assignments: { id: number; application_id: number; role_name: string; resource_name: string; application: string }[]
+  role_assignments: { id: number; application_id: number; role: string; assigned_to: string; scope: string; application: string }[]
+  alerts: { id: number; application_id: number; alert_name: string; purpose: string; resource_applied_to: string; application: string }[]
   applications: string[]
 }
 

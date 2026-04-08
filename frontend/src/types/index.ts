@@ -18,6 +18,7 @@ export interface GitRepo {
   repo_name: string
   owner: string
   link: string
+  branch: string
 }
 
 // Resource
@@ -34,9 +35,19 @@ export interface Resource {
 export interface RoleAssignment {
   id: number
   application_id: number
+  role: string
+  assigned_to: string
+  scope: string
+}
+
+// Alert
+export interface Alert {
+  id: number
+  application_id: number
   resource_group: string
-  role_name: string
-  resource_name: string
+  alert_name: string
+  purpose: string
+  resource_applied_to: string
 }
 
 // Person
@@ -81,6 +92,7 @@ export interface ApplicationDetail {
   git_repos: GitRepo[]
   resources: Resource[]
   role_assignments: RoleAssignment[]
+  alerts: Alert[]
   people: Person[]
   tasks: Task[]
 }
