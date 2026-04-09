@@ -186,6 +186,15 @@ export async function deleteTask(_appId: number, taskId: number): Promise<void> 
   if (error) throw error
 }
 
+// Bulk delete a resource group (all resources, alerts, and role assignments scoped to it)
+export async function deleteResourceGroup(rgName: string): Promise<void> {
+  await Promise.all([
+    supabase.from('resources').delete().eq('resource_group', rgName),
+    supabase.from('alerts').delete().eq('resource_group', rgName),
+    supabase.from('role_assignments').delete().eq('scope', rgName),
+  ])
+}
+
 // Resource Types (static list - no backend needed)
 export async function listResourceTypes(): Promise<string[]> {
   return [

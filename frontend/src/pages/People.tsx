@@ -1,6 +1,6 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Users, Search, Plus, X, Trash2, ArrowRight } from 'lucide-react'
+import { Users, Search, Plus, X, Trash2, ArrowRight, Filter } from 'lucide-react'
 import { listAllPeople, type PersonAggregate } from '../api/aggregates'
 import { listApplications, addPerson, deletePerson } from '../api/applications'
 import type { ApplicationSummary } from '../types'
@@ -9,6 +9,7 @@ export default function People() {
   const [people, setPeople] = useState<PersonAggregate[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [appFilter, setAppFilter] = useState('all')
   const [showPanel, setShowPanel] = useState(false)
 
   const [apps, setApps] = useState<ApplicationSummary[]>([])
@@ -37,9 +38,13 @@ export default function People() {
     await deletePerson(p.application_id, p.id); load()
   }
 
+  const uniqueApps = Array.from(new Set(people.map((p) => p.application))).sort()
+
   const filtered = people.filter((p) => {
     const q = search.toLowerCase()
-    return p.name.toLowerCase().includes(q) || p.application.toLowerCase().includes(q) || p.permissions.toLowerCase().includes(q)
+    const matchesSearch = p.name.toLowerCase().includes(q) || p.application.toLowerCase().includes(q) || p.permissions.toLowerCase().includes(q)
+    const matchesApp = appFilter === 'all' || p.application === appFilter
+    return matchesSearch && matchesApp
   })
 
   // Group by first letter for a nicer directory feel
@@ -72,10 +77,26 @@ export default function People() {
         </button>
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input type="text" placeholder="Search people, applications, permissions..." value={search} onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition" />
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1 max-w-md">
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input type="text" placeholder="Search people, applications, permissions..." value={search} onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition" />
+        </div>
+        <div className="relative">
+          <Filter className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <select value={appFilter} onChange={(e) => setAppFilter(e.target.value)}
+            className="pl-8 pr-8 py-2.5 bg-white border border-gray-200 rounded-xl text-sm cursor-pointer focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none appearance-none transition">
+            <option value="all">All Applications</option>
+            {uniqueApps.map((a) => <option key={a} value={a}>{a}</option>)}
+          </select>
+        </div>
+        {appFilter !== 'all' && (
+          <button onClick={() => setAppFilter('all')}
+            className="flex items-center gap-1.5 px-3 py-2.5 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition cursor-pointer font-medium">
+            <X className="w-3.5 h-3.5" /> Clear
+          </button>
+        )}
       </div>
 
       {filtered.length === 0 ? (

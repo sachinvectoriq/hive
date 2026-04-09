@@ -2,7 +2,7 @@ import { useState, useEffect, type FormEvent } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ArrowLeft, GitBranch, Layers, Users, Shield, Plus, Trash2,
-  ExternalLink, ChevronDown, ChevronRight, ClipboardList, Calendar, Search, Bell,
+  ExternalLink, ChevronDown, ChevronRight, ClipboardList, Calendar, Search, Bell, Filter,
 } from 'lucide-react'
 import {
   getApplication, deleteApplication,
@@ -15,6 +15,7 @@ import {
   listResourceTypes,
 } from '../api/applications'
 import type { ApplicationDetail as AppDetail } from '../types'
+import { AzureResourceIcon, getAzureIcon } from '../utils/azureIcons'
 
 type Tab = 'repos' | 'resources' | 'people' | 'tasks'
 
@@ -240,9 +241,10 @@ function ResourceGroupsTab({ app, onRefresh }: { app: AppDetail; onRefresh: () =
   const [alertResource, setAlertResource] = useState('')
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [search, setSearch] = useState('')
+  const [typeFilter, setTypeFilter] = useState('all')
 
-  // Collect all existing resource group names for dropdown
   const existingGroups = Array.from(new Set(app.resources.map((r) => r.resource_group))).sort()
+  const uniqueTypes = Array.from(new Set(app.resources.map((r) => r.type).filter(Boolean))).sort()
 
   useEffect(() => {
     const groups = new Set(app.resources.map((r) => r.resource_group))
@@ -250,15 +252,12 @@ function ResourceGroupsTab({ app, onRefresh }: { app: AppDetail; onRefresh: () =
     setExpandedGroups(groups)
   }, [app])
 
-  useEffect(() => {
-    listResourceTypes().then(setResourceTypes)
-  }, [])
+  useEffect(() => { listResourceTypes().then(setResourceTypes) }, [])
 
   const toggleGroup = (g: string) => {
     setExpandedGroups((prev) => {
       const next = new Set(prev)
-      if (next.has(g)) next.delete(g)
-      else next.add(g)
+      if (next.has(g)) next.delete(g); else next.add(g)
       return next
     })
   }
@@ -292,51 +291,47 @@ function ResourceGroupsTab({ app, onRefresh }: { app: AppDetail; onRefresh: () =
     onRefresh()
   }
 
-  const handleDeleteResource = async (resId: number) => {
-    await deleteResource(app.id, resId)
-    onRefresh()
-  }
-
-  const handleDeleteRole = async (roleId: number) => {
-    await deleteRoleAssignment(app.id, roleId)
-    onRefresh()
-  }
-
-  const handleDeleteAlert = async (alertId: number) => {
-    await deleteAlert(app.id, alertId)
-    onRefresh()
-  }
+  const handleDeleteResource = async (resId: number) => { await deleteResource(app.id, resId); onRefresh() }
+  const handleDeleteRole = async (roleId: number) => { await deleteRoleAssignment(app.id, roleId); onRefresh() }
+  const handleDeleteAlert = async (alertId: number) => { await deleteAlert(app.id, alertId); onRefresh() }
 
   const allGroups = new Set<string>()
   app.resources.forEach((r) => allGroups.add(r.resource_group))
   app.alerts.forEach((a) => allGroups.add(a.resource_group))
-  const groupNames = Array.from(allGroups).sort().filter(
-    (g) => !search || g.toLowerCase().includes(search.toLowerCase())
-  )
+  const groupNames = Array.from(allGroups).sort().filter((g) => {
+    const matchesSearch = !search || g.toLowerCase().includes(search.toLowerCase())
+    const matchesType = typeFilter === 'all' || app.resources.some((r) => r.resource_group === g && r.type === typeFilter)
+    return matchesSearch && matchesType
+  })
 
-  const filteredTypes = resourceTypes.filter(
-    (t) => t.toLowerCase().includes(typeSearch.toLowerCase())
-  )
+  const filteredTypes = resourceTypes.filter((t) => t.toLowerCase().includes(typeSearch.toLowerCase()))
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Filter resource groups..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
-          />
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
+        <div className="flex flex-1 gap-3 w-full lg:w-auto">
+          <div className="relative flex-1 max-w-xs">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input type="text" placeholder="Filter resource groups..." value={search} onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" />
+          </div>
+          {uniqueTypes.length > 0 && (
+            <div className="relative">
+              <Filter className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}
+                className="pl-8 pr-8 py-2 bg-white border border-gray-200 rounded-lg text-sm cursor-pointer focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none appearance-none transition">
+                <option value="all">All Types</option>
+                {uniqueTypes.map((t) => <option key={t} value={t}>{getAzureIcon(t).label}</option>)}
+              </select>
+            </div>
+          )}
         </div>
         <div className="flex gap-3">
           <button onClick={() => setShowResource(!showResource)} className="flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-700 font-medium cursor-pointer">
             <Plus className="w-4 h-4" /> Add Resource
           </button>
           <button onClick={() => setShowRole(!showRole)} className="flex items-center gap-2 text-sm text-violet-600 hover:text-violet-700 font-medium cursor-pointer">
-            <Plus className="w-4 h-4" /> Add Role Assignment
+            <Plus className="w-4 h-4" /> Add Role
           </button>
           <button onClick={() => setShowAlert(!showAlert)} className="flex items-center gap-2 text-sm text-amber-600 hover:text-amber-700 font-medium cursor-pointer">
             <Plus className="w-4 h-4" /> Add Alert
@@ -380,8 +375,9 @@ function ResourceGroupsTab({ app, onRefresh }: { app: AppDetail; onRefresh: () =
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => { setResType(t); setTypeSearch(t); setShowTypeDropdown(false) }}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-indigo-50 hover:text-indigo-700 cursor-pointer"
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-indigo-50 hover:text-indigo-700 cursor-pointer flex items-center gap-2"
                     >
+                      <AzureResourceIcon type={t} size="sm" />
                       {t}
                     </button>
                   ))}
@@ -491,9 +487,14 @@ function ResourceGroupsTab({ app, onRefresh }: { app: AppDetail; onRefresh: () =
                           </thead>
                           <tbody className="divide-y divide-gray-50">
                             {resources.map((r) => (
-                              <tr key={r.id} className="hover:bg-gray-50">
-                                <td className="py-2 font-medium text-gray-900">{r.resource_name}</td>
-                                <td className="py-2 text-gray-600">{r.type || '—'}</td>
+                              <tr key={r.id} className="hover:bg-gray-50 group">
+                                <td className="py-2 font-medium text-gray-900">
+                                  <div className="flex items-center gap-2">
+                                    <AzureResourceIcon type={r.type} size="sm" />
+                                    {r.resource_name}
+                                  </div>
+                                </td>
+                                <td className="py-2 text-gray-600">{r.type ? getAzureIcon(r.type).label : '—'}</td>
                                 <td className="py-2"><span className="text-xs bg-sky-50 text-sky-700 px-2 py-0.5 rounded">{r.tier_sku || '—'}</span></td>
                                 <td className="py-2">
                                   <button onClick={() => handleDeleteResource(r.id)} className="text-gray-300 hover:text-red-500 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>

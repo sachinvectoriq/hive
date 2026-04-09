@@ -2,14 +2,16 @@ import { useState, useEffect, useRef, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Layers, Shield, ChevronDown, Search, Plus, X, Trash2,
-  Server, Bell, FolderPlus, MoreHorizontal,
+  Server, Bell, FolderPlus, MoreHorizontal, Filter, ExternalLink,
 } from 'lucide-react'
 import { listResourceGroups, type ResourceGroupAggregate } from '../api/aggregates'
 import {
   listApplications, addResource, addRoleAssignment, addAlert,
-  deleteResource, deleteRoleAssignment, deleteAlert, listResourceTypes,
+  deleteResource, deleteRoleAssignment, deleteAlert, deleteResourceGroup,
+  listResourceTypes,
 } from '../api/applications'
 import type { ApplicationSummary } from '../types'
+import { AzureResourceIcon, getAzureIcon } from '../utils/azureIcons'
 
 type AddMode = 'resource' | 'role' | 'alert' | null
 
@@ -18,6 +20,10 @@ export default function ResourceGroups() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+
+  // Filters
+  const [appFilter, setAppFilter] = useState('all')
+  const [typeFilter, setTypeFilter] = useState('all')
 
   // New resource group creation
   const [showNewRgPanel, setShowNewRgPanel] = useState(false)
@@ -130,15 +136,29 @@ export default function ResourceGroups() {
   const handleDeleteResource = async (appId: number, resId: number) => { await deleteResource(appId, resId); load() }
   const handleDeleteRole = async (appId: number, roleId: number) => { await deleteRoleAssignment(appId, roleId); load() }
   const handleDeleteAlertItem = async (appId: number, alertId: number) => { await deleteAlert(appId, alertId); load() }
+  const handleDeleteResourceGroup = async (rgName: string) => {
+    if (!confirm(`Delete resource group "${rgName}" and all its resources, alerts, and role assignments? This cannot be undone.`)) return
+    await deleteResourceGroup(rgName)
+    load()
+  }
 
-  const filtered = groups.filter((g) =>
-    !search || g.name.toLowerCase().includes(search.toLowerCase()) ||
-    g.applications.some((a) => a.toLowerCase().includes(search.toLowerCase()))
-  )
+  // Collect unique apps and types for filter dropdowns
+  const uniqueApps = Array.from(new Set(groups.flatMap((g) => g.applications))).sort()
+  const uniqueTypes = Array.from(new Set(groups.flatMap((g) => g.resources.map((r) => r.type).filter(Boolean)))).sort()
+
+  const filtered = groups.filter((g) => {
+    const matchesSearch = !search ||
+      g.name.toLowerCase().includes(search.toLowerCase()) ||
+      g.applications.some((a) => a.toLowerCase().includes(search.toLowerCase())) ||
+      g.resources.some((r) => r.resource_name.toLowerCase().includes(search.toLowerCase()))
+    const matchesApp = appFilter === 'all' || g.applications.includes(appFilter)
+    const matchesType = typeFilter === 'all' || g.resources.some((r) => r.type === typeFilter)
+    return matchesSearch && matchesApp && matchesType
+  })
+
   const totalResources = groups.reduce((s, g) => s + g.resources.length, 0)
   const totalRoles = groups.reduce((s, g) => s + g.role_assignments.length, 0)
   const totalAlerts = groups.reduce((s, g) => s + (g.alerts?.length ?? 0), 0)
-
   const filteredTypes = (q: string) => resourceTypes.filter((t) => t.toLowerCase().includes(q.toLowerCase()))
 
   if (loading) return (
@@ -179,11 +199,37 @@ export default function ResourceGroups() {
         ))}
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input type="text" placeholder="Search resource groups or applications..." value={search} onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition placeholder:text-gray-400" />
+      {/* Search + Filters */}
+      <div className="flex flex-col lg:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input type="text" placeholder="Search resource groups, resources, or apps..." value={search} onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition placeholder:text-gray-400" />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <div className="relative">
+            <Filter className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <select value={appFilter} onChange={(e) => setAppFilter(e.target.value)}
+              className="pl-8 pr-8 py-2.5 bg-white border border-gray-200 rounded-xl text-sm cursor-pointer focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none appearance-none transition">
+              <option value="all">All Applications</option>
+              {uniqueApps.map((a) => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+          <div className="relative">
+            <Server className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}
+              className="pl-8 pr-8 py-2.5 bg-white border border-gray-200 rounded-xl text-sm cursor-pointer focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none appearance-none transition">
+              <option value="all">All Resource Types</option>
+              {uniqueTypes.map((t) => <option key={t} value={t}>{getAzureIcon(t).label} ({t.split('/').pop()})</option>)}
+            </select>
+          </div>
+          {(appFilter !== 'all' || typeFilter !== 'all') && (
+            <button onClick={() => { setAppFilter('all'); setTypeFilter('all') }}
+              className="flex items-center gap-1.5 px-3 py-2.5 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition cursor-pointer font-medium">
+              <X className="w-3.5 h-3.5" /> Clear
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Groups List */}
@@ -193,8 +239,8 @@ export default function ResourceGroups() {
             <Layers className="w-8 h-8 text-sky-400" />
           </div>
           <p className="text-lg font-semibold text-gray-900">No resource groups found</p>
-          <p className="text-sm text-gray-500 mt-1">{search ? 'Try a different search term' : 'Create your first resource group to get started'}</p>
-          {!search && (
+          <p className="text-sm text-gray-500 mt-1">{search || appFilter !== 'all' || typeFilter !== 'all' ? 'Try adjusting your search or filters' : 'Create your first resource group to get started'}</p>
+          {!search && appFilter === 'all' && typeFilter === 'all' && (
             <button onClick={() => setShowNewRgPanel(true)} className="mt-5 inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition cursor-pointer shadow-lg shadow-indigo-500/25">
               <FolderPlus className="w-4 h-4" /> New Resource Group
             </button>
@@ -231,6 +277,10 @@ export default function ResourceGroups() {
                         <span key={a} className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-md font-medium">{a}</span>
                       ))}
                     </div>
+                    <button onClick={() => handleDeleteResourceGroup(g.name)}
+                      className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition cursor-pointer" title="Delete resource group">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                     <div className="relative" ref={activeMenu === g.name ? menuRef : undefined}>
                       <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === g.name ? null : g.name) }}
                         className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition cursor-pointer">
@@ -246,6 +296,10 @@ export default function ResourceGroups() {
                           </button>
                           <button onClick={() => openInlineAdd(g.name, 'alert')} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-700 transition cursor-pointer">
                             <Bell className="w-3.5 h-3.5" /> Add Alert
+                          </button>
+                          <div className="border-t border-gray-100 my-1" />
+                          <button onClick={() => { setActiveMenu(null); handleDeleteResourceGroup(g.name) }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition cursor-pointer">
+                            <Trash2 className="w-3.5 h-3.5" /> Delete Resource Group
                           </button>
                         </div>
                       )}
@@ -293,7 +347,10 @@ export default function ResourceGroups() {
                                     {filteredTypes(fTypeSearch).slice(0, 15).map((t) => (
                                       <button key={t} type="button" onMouseDown={(e) => e.preventDefault()}
                                         onClick={() => { setFResType(t); setFTypeSearch(t); setShowTypeDD(false) }}
-                                        className="w-full text-left px-3 py-2 text-xs hover:bg-indigo-50 hover:text-indigo-700 cursor-pointer font-mono">{t}</button>
+                                        className="w-full text-left px-3 py-2 text-xs hover:bg-indigo-50 hover:text-indigo-700 cursor-pointer font-mono flex items-center gap-2">
+                                        <AzureResourceIcon type={t} size="sm" />
+                                        {t}
+                                      </button>
                                     ))}
                                   </div>
                                 )}
@@ -384,14 +441,16 @@ export default function ResourceGroups() {
                         <div className="space-y-1.5">
                           {g.resources.map((r) => (
                             <div key={r.id} className="flex items-center justify-between py-2.5 px-3.5 bg-gray-50/80 rounded-xl group hover:bg-gray-100/80 transition-colors">
-                              <div className="flex items-center gap-3 min-w-0">
-                                <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
-                                <span className="font-medium text-gray-900 text-sm truncate">{r.resource_name}</span>
-                                {r.type && <span className="text-[10px] bg-sky-50 text-sky-700 px-2 py-0.5 rounded-md font-mono shrink-0 hidden md:inline">{r.type}</span>}
+                              <Link to={`/applications/${r.application_id}`} className="flex items-center gap-3 min-w-0 flex-1">
+                                <AzureResourceIcon type={r.type} />
+                                <span className="font-medium text-gray-900 text-sm truncate hover:text-indigo-600 transition">{r.resource_name}</span>
+                                {r.type && <span className="text-[10px] bg-sky-50 text-sky-700 px-2 py-0.5 rounded-md font-mono shrink-0 hidden md:inline">{getAzureIcon(r.type).label}</span>}
                                 {r.tier_sku && <span className="text-[10px] bg-amber-50 text-amber-700 px-2 py-0.5 rounded-md shrink-0 hidden lg:inline">{r.tier_sku}</span>}
-                              </div>
+                              </Link>
                               <div className="flex items-center gap-3 shrink-0">
-                                <Link to={`/applications/${r.application_id}`} className="text-[10px] text-indigo-600 hover:text-indigo-700 font-medium hover:underline">{r.application}</Link>
+                                <Link to={`/applications/${r.application_id}`} className="text-[10px] text-indigo-600 hover:text-indigo-700 font-medium hover:underline flex items-center gap-1">
+                                  {r.application} <ExternalLink className="w-2.5 h-2.5" />
+                                </Link>
                                 <button onClick={() => handleDeleteResource(r.application_id, r.id)} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all cursor-pointer">
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -413,14 +472,16 @@ export default function ResourceGroups() {
                         <div className="space-y-1.5">
                           {g.role_assignments.map((ra) => (
                             <div key={ra.id} className="flex items-center justify-between py-2.5 px-3.5 bg-violet-50/40 rounded-xl group hover:bg-violet-50/70 transition-colors">
-                              <div className="flex items-center gap-3 min-w-0">
+                              <Link to={`/applications/${ra.application_id}`} className="flex items-center gap-3 min-w-0 flex-1">
                                 <div className="w-1.5 h-1.5 rounded-full bg-violet-400 shrink-0" />
                                 <span className="text-xs font-semibold bg-violet-100 text-violet-700 px-2.5 py-0.5 rounded-lg">{ra.role}</span>
                                 {ra.assigned_to && <span className="text-xs text-gray-500">→ <span className="font-medium text-gray-700">{ra.assigned_to}</span></span>}
                                 {ra.scope && <span className="text-[10px] text-gray-400 hidden md:inline">scope: {ra.scope}</span>}
-                              </div>
+                              </Link>
                               <div className="flex items-center gap-3 shrink-0">
-                                <Link to={`/applications/${ra.application_id}`} className="text-[10px] text-indigo-600 hover:text-indigo-700 font-medium hover:underline">{ra.application}</Link>
+                                <Link to={`/applications/${ra.application_id}`} className="text-[10px] text-indigo-600 hover:text-indigo-700 font-medium hover:underline flex items-center gap-1">
+                                  {ra.application} <ExternalLink className="w-2.5 h-2.5" />
+                                </Link>
                                 <button onClick={() => handleDeleteRole(ra.application_id, ra.id)} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all cursor-pointer">
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -442,14 +503,16 @@ export default function ResourceGroups() {
                         <div className="space-y-1.5">
                           {g.alerts.map((a) => (
                             <div key={a.id} className="flex items-center justify-between py-2.5 px-3.5 bg-amber-50/40 rounded-xl group hover:bg-amber-50/70 transition-colors">
-                              <div className="flex items-center gap-3 min-w-0">
-                                <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                              <Link to={`/applications/${a.application_id}`} className="flex items-center gap-3 min-w-0 flex-1">
+                                <div className="p-1.5 bg-amber-100 rounded-lg shrink-0"><Bell className="w-3.5 h-3.5 text-amber-600" /></div>
                                 <span className="text-xs font-semibold bg-amber-100 text-amber-700 px-2.5 py-0.5 rounded-lg">{a.alert_name}</span>
                                 {a.purpose && <span className="text-xs text-gray-500 hidden md:inline">{a.purpose}</span>}
                                 {a.resource_applied_to && <span className="text-[10px] text-gray-400 hidden lg:inline">on {a.resource_applied_to}</span>}
-                              </div>
+                              </Link>
                               <div className="flex items-center gap-3 shrink-0">
-                                <Link to={`/applications/${a.application_id}`} className="text-[10px] text-indigo-600 hover:text-indigo-700 font-medium hover:underline">{a.application}</Link>
+                                <Link to={`/applications/${a.application_id}`} className="text-[10px] text-indigo-600 hover:text-indigo-700 font-medium hover:underline flex items-center gap-1">
+                                  {a.application} <ExternalLink className="w-2.5 h-2.5" />
+                                </Link>
                                 <button onClick={() => handleDeleteAlertItem(a.application_id, a.id)} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all cursor-pointer">
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -520,7 +583,10 @@ export default function ResourceGroups() {
                         {filteredTypes(newRgTypeSearch).slice(0, 15).map((t) => (
                           <button key={t} type="button" onMouseDown={(e) => e.preventDefault()}
                             onClick={() => { setNewRgResType(t); setNewRgTypeSearch(t); setShowNewRgTypeDD(false) }}
-                            className="w-full text-left px-4 py-2.5 text-xs hover:bg-indigo-50 hover:text-indigo-700 cursor-pointer font-mono">{t}</button>
+                            className="w-full text-left px-4 py-2.5 text-xs hover:bg-indigo-50 hover:text-indigo-700 cursor-pointer font-mono flex items-center gap-2">
+                            <AzureResourceIcon type={t} size="sm" />
+                            {t}
+                          </button>
                         ))}
                       </div>
                     )}

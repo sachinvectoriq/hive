@@ -1,6 +1,6 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { GitBranch, ExternalLink, Search, Plus, X, Trash2 } from 'lucide-react'
+import { GitBranch, ExternalLink, Search, Plus, X, Trash2, Filter } from 'lucide-react'
 import { listAllGitRepos, type GitRepoAggregate } from '../api/aggregates'
 import { listApplications, addGitRepo, deleteGitRepo } from '../api/applications'
 import type { ApplicationSummary } from '../types'
@@ -9,6 +9,7 @@ export default function GitRepos() {
   const [repos, setRepos] = useState<GitRepoAggregate[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [appFilter, setAppFilter] = useState('all')
   const [showPanel, setShowPanel] = useState(false)
 
   const [apps, setApps] = useState<ApplicationSummary[]>([])
@@ -35,9 +36,13 @@ export default function GitRepos() {
     await deleteGitRepo(r.application_id, r.id); load()
   }
 
+  const uniqueApps = Array.from(new Set(repos.map((r) => r.application))).sort()
+
   const filtered = repos.filter((r) => {
     const q = search.toLowerCase()
-    return r.repo_name.toLowerCase().includes(q) || r.owner.toLowerCase().includes(q) || r.application.toLowerCase().includes(q)
+    const matchesSearch = r.repo_name.toLowerCase().includes(q) || r.owner.toLowerCase().includes(q) || r.application.toLowerCase().includes(q)
+    const matchesApp = appFilter === 'all' || r.application === appFilter
+    return matchesSearch && matchesApp
   })
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" /></div>
@@ -54,10 +59,26 @@ export default function GitRepos() {
         </button>
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input type="text" placeholder="Search repos, owners, applications..." value={search} onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition" />
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1 max-w-md">
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input type="text" placeholder="Search repos, owners, applications..." value={search} onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition" />
+        </div>
+        <div className="relative">
+          <Filter className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <select value={appFilter} onChange={(e) => setAppFilter(e.target.value)}
+            className="pl-8 pr-8 py-2.5 bg-white border border-gray-200 rounded-xl text-sm cursor-pointer focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none appearance-none transition">
+            <option value="all">All Applications</option>
+            {uniqueApps.map((a) => <option key={a} value={a}>{a}</option>)}
+          </select>
+        </div>
+        {appFilter !== 'all' && (
+          <button onClick={() => setAppFilter('all')}
+            className="flex items-center gap-1.5 px-3 py-2.5 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition cursor-pointer font-medium">
+            <X className="w-3.5 h-3.5" /> Clear
+          </button>
+        )}
       </div>
 
       {filtered.length === 0 ? (
