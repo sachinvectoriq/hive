@@ -508,7 +508,10 @@ export default function ResourceGroups() {
                             editResId === r.id ? (
                               <div key={r.id} className="flex items-center gap-2 py-2.5 px-3.5 bg-indigo-50/80 rounded-xl border border-indigo-200">
                                 <input type="text" value={editRes.resource_name} onChange={(e) => setEditRes({ ...editRes, resource_name: e.target.value })} className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Resource name" />
-                                <input type="text" value={editRes.type} onChange={(e) => setEditRes({ ...editRes, type: e.target.value })} className="w-40 px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Type" />
+                                <select value={editRes.type} onChange={(e) => setEditRes({ ...editRes, type: e.target.value })} className="w-48 px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer bg-white">
+                                  <option value="">Select type...</option>
+                                  {resourceTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+                                </select>
                                 <input type="text" value={editRes.tier_sku} onChange={(e) => setEditRes({ ...editRes, tier_sku: e.target.value })} className="w-28 px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Tier/SKU" />
                                 <button onClick={() => saveEditRes(r.application_id)} className="text-emerald-500 hover:text-emerald-700 cursor-pointer"><Check className="w-4 h-4" /></button>
                                 <button onClick={() => setEditResId(null)} className="text-gray-400 hover:text-gray-600 cursor-pointer"><X className="w-4 h-4" /></button>
