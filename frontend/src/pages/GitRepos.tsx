@@ -1,8 +1,8 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { GitBranch, ExternalLink, Search, Plus, X, Trash2, Filter, ChevronDown, Check } from 'lucide-react'
+import { GitBranch, ExternalLink, Search, Plus, X, Trash2, Filter, ChevronDown, Check, Pencil } from 'lucide-react'
 import { listAllGitRepos, type GitRepoAggregate } from '../api/aggregates'
-import { listApplications, addGitRepo, deleteGitRepo } from '../api/applications'
+import { listApplications, addGitRepo, deleteGitRepo, updateGitRepo } from '../api/applications'
 import type { ApplicationSummary } from '../types'
 
 export default function GitRepos() {
@@ -19,6 +19,8 @@ export default function GitRepos() {
   const [owner, setOwner] = useState('')
   const [link, setLink] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editFields, setEditFields] = useState({ repo_name: '', owner: '', link: '' })
 
   const load = () => { setLoading(true); listAllGitRepos().then(setRepos).finally(() => setLoading(false)) }
   useEffect(load, [])
@@ -35,6 +37,18 @@ export default function GitRepos() {
   const handleDelete = async (r: GitRepoAggregate) => {
     if (!confirm(`Delete repository "${r.repo_name}"?`)) return
     await deleteGitRepo(r.application_id, r.id); load()
+  }
+
+  const startEdit = (r: GitRepoAggregate) => {
+    setEditingId(r.id)
+    setEditFields({ repo_name: r.repo_name, owner: r.owner, link: r.link })
+  }
+
+  const saveEdit = async (r: GitRepoAggregate) => {
+    if (!editFields.repo_name.trim()) return
+    await updateGitRepo(r.application_id, r.id, { repo_name: editFields.repo_name.trim(), owner: editFields.owner.trim(), link: editFields.link.trim() })
+    setEditingId(null)
+    load()
   }
 
   const uniqueApps = Array.from(new Set(repos.map((r) => r.application))).sort()
@@ -127,6 +141,25 @@ export default function GitRepos() {
             <tbody className="divide-y divide-gray-50">
               {filtered.map((r) => (
                 <tr key={r.id} className="hover:bg-gray-50/50 transition group">
+                  {editingId === r.id ? (
+                    <>
+                      <td className="px-5 py-4"><input type="text" value={editFields.repo_name} onChange={(e) => setEditFields({ ...editFields, repo_name: e.target.value })} className="px-2 py-1 border border-gray-300 rounded text-sm w-full focus:ring-2 focus:ring-indigo-500 outline-none" /></td>
+                      <td className="px-5 py-4"><input type="text" value={editFields.owner} onChange={(e) => setEditFields({ ...editFields, owner: e.target.value })} className="px-2 py-1 border border-gray-300 rounded text-sm w-full focus:ring-2 focus:ring-indigo-500 outline-none" /></td>
+                      <td className="px-5 py-4">
+                        <Link to={`/applications/${r.application_id}`} className="inline-flex items-center gap-1.5 text-xs bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-lg hover:bg-indigo-100 transition font-medium">
+                          {r.application}
+                        </Link>
+                      </td>
+                      <td className="px-5 py-4"><input type="text" value={editFields.link} onChange={(e) => setEditFields({ ...editFields, link: e.target.value })} className="px-2 py-1 border border-gray-300 rounded text-sm w-full focus:ring-2 focus:ring-indigo-500 outline-none" /></td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => saveEdit(r)} className="text-emerald-500 hover:text-emerald-700 cursor-pointer"><Check className="w-4 h-4" /></button>
+                          <button onClick={() => setEditingId(null)} className="text-gray-400 hover:text-gray-600 cursor-pointer"><X className="w-4 h-4" /></button>
+                        </div>
+                      </td>
+                    </>
+                  ) : (
+                    <>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       <div className="p-1.5 bg-emerald-50 rounded-lg shrink-0"><GitBranch className="w-4 h-4 text-emerald-600" /></div>
@@ -147,8 +180,13 @@ export default function GitRepos() {
                     ) : <span className="text-gray-300 text-xs">—</span>}
                   </td>
                   <td className="px-5 py-4">
-                    <button onClick={() => handleDelete(r)} className="text-gray-400 hover:text-red-500 transition cursor-pointer"><Trash2 className="w-4 h-4" /></button>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => startEdit(r)} className="text-gray-400 hover:text-indigo-500 transition cursor-pointer"><Pencil className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => handleDelete(r)} className="text-gray-400 hover:text-red-500 transition cursor-pointer"><Trash2 className="w-4 h-4" /></button>
+                    </div>
                   </td>
+                    </>
+                  )}
                 </tr>
               ))}
             </tbody>

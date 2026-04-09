@@ -154,6 +154,7 @@ SELECT
   a.created_at,
   (SELECT COUNT(*) FROM git_repos gr WHERE gr.application_id = a.id) AS git_repo_count,
   (SELECT COUNT(*) FROM resources r WHERE r.application_id = a.id) AS resource_count,
+  (SELECT COUNT(DISTINCT r.resource_group) FROM resources r WHERE r.application_id = a.id) AS resource_group_count,
   (SELECT COUNT(*) FROM people p WHERE p.application_id = a.id) AS people_count,
   (SELECT COUNT(*) FROM tasks t WHERE t.application_id = a.id) AS task_count
 FROM applications a

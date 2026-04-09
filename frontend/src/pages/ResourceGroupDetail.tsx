@@ -2,13 +2,13 @@ import { useState, useEffect, type FormEvent } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ArrowLeft, Layers, Server, Shield, Bell, Plus, Trash2, Search,
-  ExternalLink, X, Filter, ChevronDown, Check,
+  ExternalLink, X, Filter, ChevronDown, Check, Pencil,
 } from 'lucide-react'
 import { listResourceGroups, type ResourceGroupAggregate } from '../api/aggregates'
 import {
   listApplications, addResource, addRoleAssignment, addAlert,
   deleteResource, deleteRoleAssignment, deleteAlert, deleteResourceGroup,
-  listResourceTypes,
+  listResourceTypes, updateResource, updateRoleAssignment, updateAlert,
 } from '../api/applications'
 import type { ApplicationSummary } from '../types'
 import { AzureResourceIcon, getAzureIcon } from '../utils/azureIcons'
@@ -44,6 +44,14 @@ export default function ResourceGroupDetail() {
   const [fAlertPurpose, setFAlertPurpose] = useState('')
   const [fAlertResource, setFAlertResource] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  // Edit state
+  const [editResId, setEditResId] = useState<number | null>(null)
+  const [editRes, setEditRes] = useState({ resource_name: '', type: '', tier_sku: '' })
+  const [editRoleId, setEditRoleId] = useState<number | null>(null)
+  const [editRole, setEditRole] = useState({ role: '', assigned_to: '', scope: '' })
+  const [editAlertId, setEditAlertId] = useState<number | null>(null)
+  const [editAlert, setEditAlert] = useState({ alert_name: '', purpose: '', resource_applied_to: '' })
 
   const load = () => {
     setLoading(true)
@@ -88,6 +96,22 @@ export default function ResourceGroupDetail() {
   const handleDeleteResource = async (appId: number, resId: number) => { await deleteResource(appId, resId); load() }
   const handleDeleteRole = async (appId: number, roleId: number) => { await deleteRoleAssignment(appId, roleId); load() }
   const handleDeleteAlertItem = async (appId: number, alertId: number) => { await deleteAlert(appId, alertId); load() }
+
+  const saveEditRes = async (appId: number) => {
+    if (!editResId || !editRes.resource_name.trim()) return
+    await updateResource(appId, editResId, editRes)
+    setEditResId(null); load()
+  }
+  const saveEditRole = async (appId: number) => {
+    if (!editRoleId || !editRole.role.trim()) return
+    await updateRoleAssignment(appId, editRoleId, editRole)
+    setEditRoleId(null); load()
+  }
+  const saveEditAlert = async (appId: number) => {
+    if (!editAlertId || !editAlert.alert_name.trim()) return
+    await updateAlert(appId, editAlertId, editAlert)
+    setEditAlertId(null); load()
+  }
   const handleDeleteRg = async () => {
     if (!confirm(`Delete resource group "${decodedName}" and ALL its resources, alerts, and role assignments? This cannot be undone.`)) return
     await deleteResourceGroup(decodedName)
@@ -345,6 +369,15 @@ export default function ResourceGroupDetail() {
         ) : (
           <div className="divide-y divide-gray-50">
             {filteredResources.map((r) => (
+              editResId === r.id ? (
+                <div key={r.id} className="flex items-center gap-2 px-6 py-3.5 bg-indigo-50/80 border-b border-indigo-200">
+                  <input type="text" value={editRes.resource_name} onChange={(e) => setEditRes({ ...editRes, resource_name: e.target.value })} className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Resource name" />
+                  <input type="text" value={editRes.type} onChange={(e) => setEditRes({ ...editRes, type: e.target.value })} className="w-40 px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Type" />
+                  <input type="text" value={editRes.tier_sku} onChange={(e) => setEditRes({ ...editRes, tier_sku: e.target.value })} className="w-28 px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Tier/SKU" />
+                  <button onClick={() => saveEditRes(r.application_id)} className="text-emerald-500 hover:text-emerald-700 cursor-pointer"><Check className="w-4 h-4" /></button>
+                  <button onClick={() => setEditResId(null)} className="text-gray-400 hover:text-gray-600 cursor-pointer"><X className="w-4 h-4" /></button>
+                </div>
+              ) : (
               <div key={r.id} className="flex items-center justify-between px-6 py-3.5 group hover:bg-gray-50/80 transition-colors">
                 <Link to={`/applications/${r.application_id}`} className="flex items-center gap-3 min-w-0 flex-1">
                   <AzureResourceIcon type={r.type} />
@@ -360,11 +393,15 @@ export default function ResourceGroupDetail() {
                   <Link to={`/applications/${r.application_id}`} className="text-[10px] text-indigo-600 hover:text-indigo-700 font-medium hover:underline flex items-center gap-1">
                     {r.application} <ExternalLink className="w-2.5 h-2.5" />
                   </Link>
+                  <button onClick={() => { setEditResId(r.id); setEditRes({ resource_name: r.resource_name, type: r.type, tier_sku: r.tier_sku }) }} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-indigo-500 transition-all cursor-pointer">
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
                   <button onClick={() => handleDeleteResource(r.application_id, r.id)} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all cursor-pointer">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
+              )
             ))}
           </div>
         )}
@@ -385,6 +422,14 @@ export default function ResourceGroupDetail() {
         ) : (
           <div className="divide-y divide-gray-50">
             {group.role_assignments.map((ra) => (
+              editRoleId === ra.id ? (
+                <div key={ra.id} className="flex items-center gap-2 px-6 py-3.5 bg-violet-50/80 border-b border-violet-200">
+                  <input type="text" value={editRole.role} onChange={(e) => setEditRole({ ...editRole, role: e.target.value })} className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Role" />
+                  <input type="text" value={editRole.assigned_to} onChange={(e) => setEditRole({ ...editRole, assigned_to: e.target.value })} className="w-36 px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Assigned to" />
+                  <button onClick={() => saveEditRole(ra.application_id)} className="text-emerald-500 hover:text-emerald-700 cursor-pointer"><Check className="w-4 h-4" /></button>
+                  <button onClick={() => setEditRoleId(null)} className="text-gray-400 hover:text-gray-600 cursor-pointer"><X className="w-4 h-4" /></button>
+                </div>
+              ) : (
               <div key={ra.id} className="flex items-center justify-between px-6 py-3.5 group hover:bg-violet-50/30 transition-colors">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <div className="w-1.5 h-1.5 rounded-full bg-violet-400 shrink-0" />
@@ -395,11 +440,15 @@ export default function ResourceGroupDetail() {
                   <Link to={`/applications/${ra.application_id}`} className="text-[10px] text-indigo-600 hover:text-indigo-700 font-medium hover:underline flex items-center gap-1">
                     {ra.application} <ExternalLink className="w-2.5 h-2.5" />
                   </Link>
+                  <button onClick={() => { setEditRoleId(ra.id); setEditRole({ role: ra.role, assigned_to: ra.assigned_to, scope: ra.scope }) }} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-indigo-500 transition-all cursor-pointer">
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
                   <button onClick={() => handleDeleteRole(ra.application_id, ra.id)} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all cursor-pointer">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
+              )
             ))}
           </div>
         )}
@@ -420,6 +469,15 @@ export default function ResourceGroupDetail() {
         ) : (
           <div className="divide-y divide-gray-50">
             {group.alerts.map((a) => (
+              editAlertId === a.id ? (
+                <div key={a.id} className="flex items-center gap-2 px-6 py-3.5 bg-amber-50/80 border-b border-amber-200">
+                  <input type="text" value={editAlert.alert_name} onChange={(e) => setEditAlert({ ...editAlert, alert_name: e.target.value })} className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Alert name" />
+                  <input type="text" value={editAlert.purpose} onChange={(e) => setEditAlert({ ...editAlert, purpose: e.target.value })} className="w-36 px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Purpose" />
+                  <input type="text" value={editAlert.resource_applied_to} onChange={(e) => setEditAlert({ ...editAlert, resource_applied_to: e.target.value })} className="w-36 px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Applied to" />
+                  <button onClick={() => saveEditAlert(a.application_id)} className="text-emerald-500 hover:text-emerald-700 cursor-pointer"><Check className="w-4 h-4" /></button>
+                  <button onClick={() => setEditAlertId(null)} className="text-gray-400 hover:text-gray-600 cursor-pointer"><X className="w-4 h-4" /></button>
+                </div>
+              ) : (
               <div key={a.id} className="flex items-center justify-between px-6 py-3.5 group hover:bg-amber-50/30 transition-colors">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <div className="p-1.5 bg-amber-100 rounded-lg shrink-0"><Bell className="w-3.5 h-3.5 text-amber-600" /></div>
@@ -435,11 +493,15 @@ export default function ResourceGroupDetail() {
                   <Link to={`/applications/${a.application_id}`} className="text-[10px] text-indigo-600 hover:text-indigo-700 font-medium hover:underline flex items-center gap-1">
                     {a.application} <ExternalLink className="w-2.5 h-2.5" />
                   </Link>
+                  <button onClick={() => { setEditAlertId(a.id); setEditAlert({ alert_name: a.alert_name, purpose: a.purpose, resource_applied_to: a.resource_applied_to }) }} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-indigo-500 transition-all cursor-pointer">
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
                   <button onClick={() => handleDeleteAlertItem(a.application_id, a.id)} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all cursor-pointer">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
+              )
             ))}
           </div>
         )}

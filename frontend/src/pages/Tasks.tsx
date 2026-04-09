@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   ClipboardList, Search, Calendar, Plus, X, Trash2,
   Circle, Loader2, CheckCircle2, AlertTriangle, Filter, AppWindow, User,
-  ChevronDown, Check,
+  ChevronDown, Check, Pencil,
 } from 'lucide-react'
 import { listAllTasks, type TaskAggregate } from '../api/aggregates'
 import { listApplications, addTask, updateTask, deleteTask, getApplication } from '../api/applications'
@@ -44,6 +44,8 @@ export default function Tasks() {
   const [severity, setSeverity] = useState('medium')
   const [assignedTo, setAssignedTo] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editFields, setEditFields] = useState({ title: '', description: '', severity: '', assigned_to: '' })
 
   const load = () => {
     setLoading(true)
@@ -83,6 +85,18 @@ export default function Tasks() {
   const handleDelete = async (t: TaskAggregate) => {
     if (!confirm(`Delete task "${t.title}"?`)) return
     await deleteTask(t.application_id, t.id)
+    load()
+  }
+
+  const startEditTask = (t: TaskAggregate) => {
+    setEditingId(t.id)
+    setEditFields({ title: t.title, description: t.description || '', severity: t.severity, assigned_to: t.assigned_to || '' })
+  }
+
+  const saveEditTask = async (t: TaskAggregate) => {
+    if (!editFields.title.trim()) return
+    await updateTask(t.application_id, t.id, { title: editFields.title.trim(), description: editFields.description.trim(), severity: editFields.severity, assigned_to: editFields.assigned_to })
+    setEditingId(null)
     load()
   }
 
@@ -321,6 +335,45 @@ export default function Tasks() {
               {filtered.map((t) => {
                 return (
                   <tr key={t.id} className="hover:bg-gray-50/50 transition group">
+                    {editingId === t.id ? (
+                      <>
+                        <td className="px-5 py-4"><input type="text" value={editFields.title} onChange={(e) => setEditFields({ ...editFields, title: e.target.value })} className="px-2 py-1 border border-gray-300 rounded text-sm w-full focus:ring-2 focus:ring-indigo-500 outline-none" /></td>
+                        <td className="px-5 py-4">
+                          <Link to={`/applications/${t.application_id}`} className="inline-flex items-center gap-1.5 text-xs bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-lg hover:bg-indigo-100 transition font-medium">{t.application}</Link>
+                        </td>
+                        <td className="px-5 py-4">
+                          <select value={t.status} onChange={(e) => handleStatusChange(t, e.target.value)}
+                            className={`text-xs px-2.5 py-1 rounded-lg font-medium border-0 cursor-pointer ${STATUS_COLORS[t.status] || 'bg-gray-100 text-gray-600'}`}>
+                            <option value="not-started">⊘ Not Started</option>
+                            <option value="in-progress">◎ In Progress</option>
+                            <option value="completed">✓ Completed</option>
+                          </select>
+                        </td>
+                        <td className="px-5 py-4">
+                          <select value={editFields.severity} onChange={(e) => setEditFields({ ...editFields, severity: e.target.value })}
+                            className="px-2 py-1 border border-gray-300 rounded text-xs cursor-pointer outline-none">
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                          </select>
+                        </td>
+                        <td className="px-5 py-4">
+                          <input type="text" value={editFields.assigned_to} onChange={(e) => setEditFields({ ...editFields, assigned_to: e.target.value })}
+                            className="px-2 py-1 border border-gray-300 rounded text-xs w-full focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Assigned to" />
+                        </td>
+                        <td className="px-5 py-4 text-gray-400 text-xs">
+                          {t.assigned_on ? <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(t.assigned_on).toLocaleDateString()}</span> : '—'}
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => saveEditTask(t)} className="text-emerald-500 hover:text-emerald-700 cursor-pointer"><Check className="w-4 h-4" /></button>
+                            <button onClick={() => setEditingId(null)} className="text-gray-400 hover:text-gray-600 cursor-pointer"><X className="w-4 h-4" /></button>
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <>
                     <td className="px-5 py-4">
                       <p className="font-medium text-gray-900">{t.title}</p>
                       {t.description && <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{t.description}</p>}
@@ -359,10 +412,13 @@ export default function Tasks() {
                       ) : '—'}
                     </td>
                     <td className="px-5 py-4">
-                      <button onClick={() => handleDelete(t)} className="text-gray-400 hover:text-red-500 transition cursor-pointer">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => startEditTask(t)} className="text-gray-400 hover:text-indigo-500 transition cursor-pointer"><Pencil className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => handleDelete(t)} className="text-gray-400 hover:text-red-500 transition cursor-pointer"><Trash2 className="w-4 h-4" /></button>
+                      </div>
                     </td>
+                      </>
+                    )}
                   </tr>
                 )
               })}

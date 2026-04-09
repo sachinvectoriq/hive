@@ -57,6 +57,11 @@ export async function createApplication(body: { name: string; description?: stri
   return { ...data, git_repos: [], resources: [], role_assignments: [], alerts: [], people: [], tasks: [] } as ApplicationDetail
 }
 
+export async function updateApplication(id: number, body: Partial<{ name: string; description: string }>): Promise<void> {
+  const { error } = await supabase.from('applications').update(body).eq('id', id)
+  if (error) throw error
+}
+
 export async function deleteApplication(id: number): Promise<void> {
   // Delete children first (cascade not automatic via API)
   await Promise.all([
@@ -82,6 +87,12 @@ export async function addGitRepo(_appId: number, body: { repo_name: string; owne
   return data as GitRepo
 }
 
+export async function updateGitRepo(_appId: number, repoId: number, body: Partial<{ repo_name: string; owner: string; link: string; branch: string }>): Promise<GitRepo> {
+  const { data, error } = await supabase.from('git_repos').update(body).eq('id', repoId).select().single()
+  if (error) throw error
+  return data as GitRepo
+}
+
 export async function deleteGitRepo(_appId: number, repoId: number): Promise<void> {
   const { error } = await supabase.from('git_repos').delete().eq('id', repoId)
   if (error) throw error
@@ -94,6 +105,12 @@ export async function addResource(appId: number, body: { resource_group: string;
     .insert({ application_id: appId, resource_group: body.resource_group, resource_name: body.resource_name, type: body.type ?? '', tier_sku: body.tier_sku ?? '' })
     .select()
     .single()
+  if (error) throw error
+  return data as Resource
+}
+
+export async function updateResource(_appId: number, resourceId: number, body: Partial<{ resource_group: string; resource_name: string; type: string; tier_sku: string }>): Promise<Resource> {
+  const { data, error } = await supabase.from('resources').update(body).eq('id', resourceId).select().single()
   if (error) throw error
   return data as Resource
 }
@@ -114,6 +131,12 @@ export async function addRoleAssignment(appId: number, body: { role: string; ass
   return data as RoleAssignment
 }
 
+export async function updateRoleAssignment(_appId: number, roleId: number, body: Partial<{ role: string; assigned_to: string; scope: string }>): Promise<RoleAssignment> {
+  const { data, error } = await supabase.from('role_assignments').update(body).eq('id', roleId).select().single()
+  if (error) throw error
+  return data as RoleAssignment
+}
+
 export async function deleteRoleAssignment(_appId: number, roleId: number): Promise<void> {
   const { error } = await supabase.from('role_assignments').delete().eq('id', roleId)
   if (error) throw error
@@ -130,6 +153,12 @@ export async function addAlert(appId: number, body: { resource_group: string; al
   return data as Alert
 }
 
+export async function updateAlert(_appId: number, alertId: number, body: Partial<{ resource_group: string; alert_name: string; purpose: string; resource_applied_to: string }>): Promise<Alert> {
+  const { data, error } = await supabase.from('alerts').update(body).eq('id', alertId).select().single()
+  if (error) throw error
+  return data as Alert
+}
+
 export async function deleteAlert(_appId: number, alertId: number): Promise<void> {
   const { error } = await supabase.from('alerts').delete().eq('id', alertId)
   if (error) throw error
@@ -142,6 +171,12 @@ export async function addPerson(appId: number, body: { name: string; application
     .insert({ application_id: appId, name: body.name, applications_involved: body.applications_involved ?? '', resource_groups_involved: body.resource_groups_involved ?? '', permissions: body.permissions ?? '' })
     .select()
     .single()
+  if (error) throw error
+  return data as Person
+}
+
+export async function updatePerson(_appId: number, personId: number, body: Partial<{ name: string; applications_involved: string; resource_groups_involved: string; permissions: string }>): Promise<Person> {
+  const { data, error } = await supabase.from('people').update(body).eq('id', personId).select().single()
   if (error) throw error
   return data as Person
 }
@@ -198,41 +233,20 @@ export async function deleteResourceGroup(rgName: string): Promise<void> {
 // Resource Types (static list - no backend needed)
 export async function listResourceTypes(): Promise<string[]> {
   return [
-    "Microsoft.Web/sites",
-    "Microsoft.Web/staticSites",
-    "Microsoft.Search/searchServices",
-    "Microsoft.CognitiveServices/accounts",
-    "Microsoft.MachineLearningServices/workspaces",
-    "Microsoft.KeyVault/vaults",
-    "Microsoft.DocumentDB/databaseAccounts",
-    "Microsoft.Logic/workflows",
-    "Microsoft.Insights/components",
-    "Microsoft.Storage/storageAccounts",
-    "Microsoft.Sql/servers",
-    "Microsoft.DataFactory/factories",
-    "Microsoft.ContainerRegistry/registries",
-    "Microsoft.ContainerApps/containerApps",
-    "Microsoft.Kubernetes/connectedClusters",
-    "Microsoft.Network/virtualNetworks",
-    "Microsoft.Network/applicationGateways",
-    "Microsoft.Network/loadBalancers",
-    "Microsoft.Compute/virtualMachines",
-    "Microsoft.EventHub/namespaces",
-    "Microsoft.ServiceBus/namespaces",
-    "Microsoft.Cache/redis",
-    "Microsoft.SignalRService/SignalR",
-    "Microsoft.ApiManagement/service",
-    "Microsoft.DBforPostgreSQL/flexibleServers",
-    "Microsoft.DBforMySQL/flexibleServers",
-    "Microsoft.Monitor/accounts",
-    "Microsoft.Dashboard/grafana",
-    "Microsoft.ManagedIdentity/userAssignedIdentities",
-    "Microsoft.Authorization/roleAssignments",
-    "Microsoft.OperationalInsights/workspaces",
-    "Microsoft.Cdn/profiles",
-    "Microsoft.Communication/communicationServices",
-    "Microsoft.BotService/botServices",
-    "Microsoft.OpenAI/accounts",
-    "Microsoft.CognitiveServices/AIServices",
+    "Azure App Service (Web app)",
+    "App Service Plan",
+    "Static Web App",
+    "Azure CosmosDB for PostgreSQL Cluster",
+    "Azure Cosmos DB database",
+    "Storage Account",
+    "AI Search",
+    "Azure AI Foundry",
+    "Azure AI services multi-service account",
+    "Computer vision",
+    "Logic App",
+    "Application Insights",
+    "Log Analytics Workspace",
+    "Translator",
+    "Document intelligence",
   ]
 }

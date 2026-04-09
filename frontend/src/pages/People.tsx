@@ -1,8 +1,8 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Users, Search, Plus, X, Trash2, ArrowRight, Filter, ChevronDown, Check } from 'lucide-react'
+import { Users, Search, Plus, X, Trash2, ArrowRight, Filter, ChevronDown, Check, Pencil } from 'lucide-react'
 import { listAllPeople, listResourceGroups, type PersonAggregate, type ResourceGroupAggregate } from '../api/aggregates'
-import { listApplications, addPerson, deletePerson } from '../api/applications'
+import { listApplications, addPerson, deletePerson, updatePerson } from '../api/applications'
 import type { ApplicationSummary } from '../types'
 
 export default function People() {
@@ -21,6 +21,8 @@ export default function People() {
   const [showRgDropdown, setShowRgDropdown] = useState(false)
   const [permissions, setPermissions] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editFields, setEditFields] = useState({ name: '', permissions: '' })
 
   const load = () => { setLoading(true); listAllPeople().then(setPeople).finally(() => setLoading(false)) }
   useEffect(load, [])
@@ -45,6 +47,19 @@ export default function People() {
     e.preventDefault(); e.stopPropagation()
     if (!confirm(`Remove "${p.name}"?`)) return
     await deletePerson(p.application_id, p.id); load()
+  }
+
+  const startEdit = (p: PersonAggregate, e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation()
+    setEditingId(p.id)
+    setEditFields({ name: p.name, permissions: p.permissions })
+  }
+
+  const saveEdit = async (p: PersonAggregate) => {
+    if (!editFields.name.trim()) return
+    await updatePerson(p.application_id, p.id, { name: editFields.name.trim(), permissions: editFields.permissions.trim() })
+    setEditingId(null)
+    load()
   }
 
   const uniqueApps = Array.from(new Set(people.map((p) => p.application))).sort()
@@ -129,6 +144,26 @@ export default function People() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                 {grouped[letter].map((p, idx) => (
+                  editingId === p.id ? (
+                    <div key={p.id} className="bg-white rounded-xl border-2 border-indigo-300 p-5 relative block">
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-500 mb-1">Name</label>
+                          <input type="text" value={editFields.name} onChange={(e) => setEditFields({ ...editFields, name: e.target.value })}
+                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-500 mb-1">Permissions</label>
+                          <input type="text" value={editFields.permissions} onChange={(e) => setEditFields({ ...editFields, permissions: e.target.value })}
+                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+                        </div>
+                        <div className="flex items-center gap-2 pt-1">
+                          <button onClick={() => saveEdit(p)} className="px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-lg hover:bg-indigo-700 transition cursor-pointer">Save</button>
+                          <button onClick={() => setEditingId(null)} className="px-3 py-1.5 bg-gray-100 text-gray-600 text-xs rounded-lg hover:bg-gray-200 transition cursor-pointer">Cancel</button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
                   <Link key={p.id} to={`/people/${p.id}`}
                     className="bg-white rounded-xl border border-gray-200 p-5 card-hover group relative block">
                     <div className="flex items-center gap-3 mb-3">
@@ -151,11 +186,18 @@ export default function People() {
                         )}
                       </div>
                     )}
-                    <button onClick={(e) => handleDelete(p, e)}
-                      className="absolute top-3 right-3 p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition cursor-pointer">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="absolute top-3 right-3 flex items-center gap-1">
+                      <button onClick={(e) => startEdit(p, e)}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 transition cursor-pointer">
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={(e) => handleDelete(p, e)}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition cursor-pointer">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </Link>
+                  )
                 ))}
               </div>
             </div>

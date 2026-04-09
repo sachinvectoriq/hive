@@ -79,7 +79,7 @@ export default function Applications() {
               </div>
               <div className="flex gap-4 pt-3 border-t border-gray-50 text-xs text-gray-400">
                 <span className="flex items-center gap-1.5"><GitBranch className="w-3.5 h-3.5 text-emerald-500" /> {app.git_repo_count} repos</span>
-                <span className="flex items-center gap-1.5"><Layers className="w-3.5 h-3.5 text-sky-500" /> {app.resource_count} resources</span>
+                <span className="flex items-center gap-1.5"><Layers className="w-3.5 h-3.5 text-sky-500" /> {app.resource_group_count} resource groups</span>
                 <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-violet-500" /> {app.people_count} people</span>
               </div>
               <button onClick={(e) => handleDelete(app.id, app.name, e)}

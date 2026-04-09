@@ -81,6 +81,7 @@ export interface ApplicationSummary {
   created_at: string
   git_repo_count: number
   resource_count: number
+  resource_group_count: number
   people_count: number
 }
 
