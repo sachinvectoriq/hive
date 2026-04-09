@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Layers, Shield, ChevronDown, Search, Plus, X, Trash2,
-  Server, Bell, FolderPlus, MoreHorizontal, Filter, ExternalLink,
+  Server, Bell, FolderPlus, MoreHorizontal, Filter, ExternalLink, Check,
 } from 'lucide-react'
 import { listResourceGroups, type ResourceGroupAggregate } from '../api/aggregates'
 import {
@@ -22,8 +22,10 @@ export default function ResourceGroups() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   // Filters
-  const [appFilter, setAppFilter] = useState('all')
-  const [typeFilter, setTypeFilter] = useState('all')
+  const [selectedApps, setSelectedApps] = useState<string[]>([])
+  const [selectedRgs, setSelectedRgs] = useState<string[]>([])
+  const [showAppDD, setShowAppDD] = useState(false)
+  const [showRgDD, setShowRgDD] = useState(false)
 
   // New resource group creation
   const [showNewRgPanel, setShowNewRgPanel] = useState(false)
@@ -142,18 +144,21 @@ export default function ResourceGroups() {
     load()
   }
 
-  // Collect unique apps and types for filter dropdowns
+  // Collect unique apps and RG names for filter dropdowns
   const uniqueApps = Array.from(new Set(groups.flatMap((g) => g.applications))).sort()
-  const uniqueTypes = Array.from(new Set(groups.flatMap((g) => g.resources.map((r) => r.type).filter(Boolean)))).sort()
+  const uniqueRgs = groups.map((g) => g.name).sort()
+
+  const toggleApp = (a: string) => setSelectedApps((prev) => prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a])
+  const toggleRg = (r: string) => setSelectedRgs((prev) => prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r])
 
   const filtered = groups.filter((g) => {
     const matchesSearch = !search ||
       g.name.toLowerCase().includes(search.toLowerCase()) ||
       g.applications.some((a) => a.toLowerCase().includes(search.toLowerCase())) ||
       g.resources.some((r) => r.resource_name.toLowerCase().includes(search.toLowerCase()))
-    const matchesApp = appFilter === 'all' || g.applications.includes(appFilter)
-    const matchesType = typeFilter === 'all' || g.resources.some((r) => r.type === typeFilter)
-    return matchesSearch && matchesApp && matchesType
+    const matchesApp = selectedApps.length === 0 || g.applications.some((a) => selectedApps.includes(a))
+    const matchesRg = selectedRgs.length === 0 || selectedRgs.includes(g.name)
+    return matchesSearch && matchesApp && matchesRg
   })
 
   const totalResources = groups.reduce((s, g) => s + g.resources.length, 0)
@@ -208,23 +213,59 @@ export default function ResourceGroups() {
         </div>
         <div className="flex flex-wrap gap-2">
           <div className="relative">
-            <Filter className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-            <select value={appFilter} onChange={(e) => setAppFilter(e.target.value)}
-              className="pl-8 pr-8 py-2.5 bg-white border border-gray-200 rounded-xl text-sm cursor-pointer focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none appearance-none transition">
-              <option value="all">All Applications</option>
-              {uniqueApps.map((a) => <option key={a} value={a}>{a}</option>)}
-            </select>
+            <button type="button" onClick={() => { setShowAppDD(!showAppDD); setShowRgDD(false) }}
+              className="flex items-center gap-2 pl-8 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm cursor-pointer hover:bg-gray-50 transition">
+              <Filter className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <span className={selectedApps.length === 0 ? 'text-gray-400' : 'text-gray-900'}>
+                {selectedApps.length === 0 ? 'All Applications' : `${selectedApps.length} app${selectedApps.length > 1 ? 's' : ''}`}
+              </span>
+              <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showAppDD ? 'rotate-180' : ''}`} />
+            </button>
+            {showAppDD && (
+              <div className="absolute z-30 left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto min-w-[220px] animate-scale-in origin-top-left">
+                {uniqueApps.map((a) => {
+                  const sel = selectedApps.includes(a)
+                  return (
+                    <button key={a} type="button" onClick={() => toggleApp(a)}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition cursor-pointer ${sel ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-50'}`}>
+                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition ${sel ? 'bg-indigo-600 border-indigo-600' : 'border-gray-300'}`}>
+                        {sel && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                      <span className="truncate">{a}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
           <div className="relative">
-            <Server className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}
-              className="pl-8 pr-8 py-2.5 bg-white border border-gray-200 rounded-xl text-sm cursor-pointer focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none appearance-none transition">
-              <option value="all">All Resource Types</option>
-              {uniqueTypes.map((t) => <option key={t} value={t}>{getAzureIcon(t).label} ({t.split('/').pop()})</option>)}
-            </select>
+            <button type="button" onClick={() => { setShowRgDD(!showRgDD); setShowAppDD(false) }}
+              className="flex items-center gap-2 pl-8 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm cursor-pointer hover:bg-gray-50 transition">
+              <Layers className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <span className={selectedRgs.length === 0 ? 'text-gray-400' : 'text-gray-900'}>
+                {selectedRgs.length === 0 ? 'All Resource Groups' : `${selectedRgs.length} RG${selectedRgs.length > 1 ? 's' : ''}`}
+              </span>
+              <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showRgDD ? 'rotate-180' : ''}`} />
+            </button>
+            {showRgDD && (
+              <div className="absolute z-30 left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto min-w-[260px] animate-scale-in origin-top-left">
+                {uniqueRgs.map((r) => {
+                  const sel = selectedRgs.includes(r)
+                  return (
+                    <button key={r} type="button" onClick={() => toggleRg(r)}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition cursor-pointer ${sel ? 'bg-sky-50 text-sky-700' : 'text-gray-700 hover:bg-gray-50'}`}>
+                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition ${sel ? 'bg-sky-600 border-sky-600' : 'border-gray-300'}`}>
+                        {sel && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                      <span className="truncate">{r}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
-          {(appFilter !== 'all' || typeFilter !== 'all') && (
-            <button onClick={() => { setAppFilter('all'); setTypeFilter('all') }}
+          {(selectedApps.length > 0 || selectedRgs.length > 0) && (
+            <button onClick={() => { setSelectedApps([]); setSelectedRgs([]) }}
               className="flex items-center gap-1.5 px-3 py-2.5 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition cursor-pointer font-medium">
               <X className="w-3.5 h-3.5" /> Clear
             </button>
@@ -239,8 +280,8 @@ export default function ResourceGroups() {
             <Layers className="w-8 h-8 text-sky-400" />
           </div>
           <p className="text-lg font-semibold text-gray-900">No resource groups found</p>
-          <p className="text-sm text-gray-500 mt-1">{search || appFilter !== 'all' || typeFilter !== 'all' ? 'Try adjusting your search or filters' : 'Create your first resource group to get started'}</p>
-          {!search && appFilter === 'all' && typeFilter === 'all' && (
+          <p className="text-sm text-gray-500 mt-1">{search || selectedApps.length > 0 || selectedRgs.length > 0 ? 'Try adjusting your search or filters' : 'Create your first resource group to get started'}</p>
+          {!search && selectedApps.length === 0 && selectedRgs.length === 0 && (
             <button onClick={() => setShowNewRgPanel(true)} className="mt-5 inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition cursor-pointer shadow-lg shadow-indigo-500/25">
               <FolderPlus className="w-4 h-4" /> New Resource Group
             </button>
@@ -263,7 +304,7 @@ export default function ResourceGroups() {
                       <Layers className="w-4 h-4 text-sky-600" />
                     </div>
                     <div>
-                      <span className="font-semibold text-gray-900 text-[15px]">{g.name}</span>
+                      <Link to={`/resource-groups/${encodeURIComponent(g.name)}`} className="font-semibold text-gray-900 text-[15px] hover:text-indigo-600 transition">{g.name}</Link>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-[10px] font-medium bg-gray-100 text-gray-500 px-2 py-0.5 rounded-md">{g.resources.length} resource{g.resources.length !== 1 ? 's' : ''}</span>
                         {g.role_assignments.length > 0 && <span className="text-[10px] font-medium bg-violet-50 text-violet-600 px-2 py-0.5 rounded-md">{g.role_assignments.length} role{g.role_assignments.length !== 1 ? 's' : ''}</span>}

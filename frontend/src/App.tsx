@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard'
 import Applications from './pages/Applications'
 import ApplicationDetail from './pages/ApplicationDetail'
 import ResourceGroups from './pages/ResourceGroups'
+import ResourceGroupDetail from './pages/ResourceGroupDetail'
 import GitRepos from './pages/GitRepos'
 import People from './pages/People'
 import PersonDetail from './pages/PersonDetail'
@@ -31,6 +32,7 @@ function AppRoutes() {
         <Route path="applications" element={<Applications />} />
         <Route path="applications/:id" element={<ApplicationDetail />} />
         <Route path="resource-groups" element={<ResourceGroups />} />
+        <Route path="resource-groups/:name" element={<ResourceGroupDetail />} />
         <Route path="git-repos" element={<GitRepos />} />
         <Route path="people" element={<People />} />
         <Route path="people/:id" element={<PersonDetail />} />

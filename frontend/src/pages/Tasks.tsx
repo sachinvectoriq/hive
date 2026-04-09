@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   ClipboardList, Search, Calendar, Plus, X, Trash2,
   Circle, Loader2, CheckCircle2, AlertTriangle, Filter, AppWindow, User,
+  ChevronDown, Check,
 } from 'lucide-react'
 import { listAllTasks, type TaskAggregate } from '../api/aggregates'
 import { listApplications, addTask, updateTask, deleteTask, getApplication } from '../api/applications'
@@ -24,10 +25,14 @@ export default function Tasks() {
   const [tasks, setTasks] = useState<TaskAggregate[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [severityFilter, setSeverityFilter] = useState('all')
-  const [appFilter, setAppFilter] = useState('all')
-  const [personFilter, setPersonFilter] = useState('all')
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([])
+  const [selectedSeverities, setSelectedSeverities] = useState<string[]>([])
+  const [selectedApps, setSelectedApps] = useState<string[]>([])
+  const [selectedPeople, setSelectedPeople] = useState<string[]>([])
+  const [showStatusDD, setShowStatusDD] = useState(false)
+  const [showSeverityDD, setShowSeverityDD] = useState(false)
+  const [showAppDD, setShowAppDD] = useState(false)
+  const [showPersonDD, setShowPersonDD] = useState(false)
   const [showPanel, setShowPanel] = useState(false)
 
   // Add form state
@@ -84,14 +89,21 @@ export default function Tasks() {
   const uniqueApps = Array.from(new Set(tasks.map((t) => t.application))).sort()
   const uniquePeople = Array.from(new Set(tasks.map((t) => t.assigned_to).filter(Boolean))).sort()
 
+  const toggleStatus = (v: string) => setSelectedStatuses((p) => p.includes(v) ? p.filter((x) => x !== v) : [...p, v])
+  const toggleSeverity = (v: string) => setSelectedSeverities((p) => p.includes(v) ? p.filter((x) => x !== v) : [...p, v])
+  const toggleApp = (v: string) => setSelectedApps((p) => p.includes(v) ? p.filter((x) => x !== v) : [...p, v])
+  const togglePerson = (v: string) => setSelectedPeople((p) => p.includes(v) ? p.filter((x) => x !== v) : [...p, v])
+  const closeAllDD = () => { setShowStatusDD(false); setShowSeverityDD(false); setShowAppDD(false); setShowPersonDD(false) }
+  const hasFilters = selectedStatuses.length > 0 || selectedSeverities.length > 0 || selectedApps.length > 0 || selectedPeople.length > 0
+
   const filtered = tasks.filter((t) => {
     const q = search.toLowerCase()
     const matchesSearch = t.title.toLowerCase().includes(q) || t.application.toLowerCase().includes(q) || t.assigned_to.toLowerCase().includes(q)
     return matchesSearch
-      && (statusFilter === 'all' || t.status === statusFilter)
-      && (severityFilter === 'all' || t.severity === severityFilter)
-      && (appFilter === 'all' || t.application === appFilter)
-      && (personFilter === 'all' || t.assigned_to === personFilter)
+      && (selectedStatuses.length === 0 || selectedStatuses.includes(t.status))
+      && (selectedSeverities.length === 0 || selectedSeverities.includes(t.severity))
+      && (selectedApps.length === 0 || selectedApps.includes(t.application))
+      && (selectedPeople.length === 0 || selectedPeople.includes(t.assigned_to))
   })
 
   const counts = { total: tasks.length, ns: tasks.filter((t) => t.status === 'not-started').length, ip: tasks.filter((t) => t.status === 'in-progress').length, done: tasks.filter((t) => t.status === 'completed').length }
@@ -156,43 +168,120 @@ export default function Tasks() {
             className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition" />
         </div>
         <div className="flex flex-wrap gap-2">
+          {/* Status multi-select */}
           <div className="relative">
-            <Filter className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-              className="pl-8 pr-8 py-2.5 bg-white border border-gray-200 rounded-xl text-sm cursor-pointer focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none appearance-none transition">
-              <option value="all">All Statuses</option>
-              <option value="not-started">Not Started</option>
-              <option value="in-progress">In Progress</option>
-              <option value="completed">Completed</option>
-            </select>
+            <button type="button" onClick={() => { closeAllDD(); setShowStatusDD(!showStatusDD) }}
+              className="flex items-center gap-2 pl-8 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm cursor-pointer hover:bg-gray-50 transition">
+              <Filter className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <span className={selectedStatuses.length === 0 ? 'text-gray-400' : 'text-gray-900'}>
+                {selectedStatuses.length === 0 ? 'All Statuses' : `${selectedStatuses.length} status${selectedStatuses.length > 1 ? 'es' : ''}`}
+              </span>
+              <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showStatusDD ? 'rotate-180' : ''}`} />
+            </button>
+            {showStatusDD && (
+              <div className="absolute z-30 left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl min-w-[180px] animate-scale-in origin-top-left">
+                {[{ v: 'not-started', l: 'Not Started' }, { v: 'in-progress', l: 'In Progress' }, { v: 'completed', l: 'Completed' }].map(({ v, l }) => {
+                  const sel = selectedStatuses.includes(v)
+                  return (
+                    <button key={v} type="button" onClick={() => toggleStatus(v)}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition cursor-pointer ${sel ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-50'}`}>
+                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition ${sel ? 'bg-indigo-600 border-indigo-600' : 'border-gray-300'}`}>
+                        {sel && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                      <span>{l}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
+          {/* Severity multi-select */}
           <div className="relative">
-            <AlertTriangle className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-            <select value={severityFilter} onChange={(e) => setSeverityFilter(e.target.value)}
-              className="pl-8 pr-8 py-2.5 bg-white border border-gray-200 rounded-xl text-sm cursor-pointer focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none appearance-none transition">
-              <option value="all">All Severities</option>
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="critical">Critical</option>
-            </select>
+            <button type="button" onClick={() => { closeAllDD(); setShowSeverityDD(!showSeverityDD) }}
+              className="flex items-center gap-2 pl-8 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm cursor-pointer hover:bg-gray-50 transition">
+              <AlertTriangle className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <span className={selectedSeverities.length === 0 ? 'text-gray-400' : 'text-gray-900'}>
+                {selectedSeverities.length === 0 ? 'All Severities' : `${selectedSeverities.length} severity`}
+              </span>
+              <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showSeverityDD ? 'rotate-180' : ''}`} />
+            </button>
+            {showSeverityDD && (
+              <div className="absolute z-30 left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl min-w-[180px] animate-scale-in origin-top-left">
+                {[{ v: 'low', l: 'Low' }, { v: 'medium', l: 'Medium' }, { v: 'high', l: 'High' }, { v: 'critical', l: 'Critical' }].map(({ v, l }) => {
+                  const sel = selectedSeverities.includes(v)
+                  return (
+                    <button key={v} type="button" onClick={() => toggleSeverity(v)}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition cursor-pointer ${sel ? 'bg-orange-50 text-orange-700' : 'text-gray-700 hover:bg-gray-50'}`}>
+                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition ${sel ? 'bg-orange-600 border-orange-600' : 'border-gray-300'}`}>
+                        {sel && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                      <span>{l}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
+          {/* App multi-select */}
           <div className="relative">
-            <AppWindow className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-            <select value={appFilter} onChange={(e) => setAppFilter(e.target.value)}
-              className="pl-8 pr-8 py-2.5 bg-white border border-gray-200 rounded-xl text-sm cursor-pointer focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none appearance-none transition">
-              <option value="all">All Applications</option>
-              {uniqueApps.map((a) => <option key={a} value={a}>{a}</option>)}
-            </select>
+            <button type="button" onClick={() => { closeAllDD(); setShowAppDD(!showAppDD) }}
+              className="flex items-center gap-2 pl-8 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm cursor-pointer hover:bg-gray-50 transition">
+              <AppWindow className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <span className={selectedApps.length === 0 ? 'text-gray-400' : 'text-gray-900'}>
+                {selectedApps.length === 0 ? 'All Applications' : `${selectedApps.length} app${selectedApps.length > 1 ? 's' : ''}`}
+              </span>
+              <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showAppDD ? 'rotate-180' : ''}`} />
+            </button>
+            {showAppDD && (
+              <div className="absolute z-30 left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto min-w-[220px] animate-scale-in origin-top-left">
+                {uniqueApps.map((a) => {
+                  const sel = selectedApps.includes(a)
+                  return (
+                    <button key={a} type="button" onClick={() => toggleApp(a)}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition cursor-pointer ${sel ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-50'}`}>
+                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition ${sel ? 'bg-indigo-600 border-indigo-600' : 'border-gray-300'}`}>
+                        {sel && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                      <span className="truncate">{a}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
+          {/* Person multi-select */}
           <div className="relative">
-            <User className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-            <select value={personFilter} onChange={(e) => setPersonFilter(e.target.value)}
-              className="pl-8 pr-8 py-2.5 bg-white border border-gray-200 rounded-xl text-sm cursor-pointer focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none appearance-none transition">
-              <option value="all">All People</option>
-              {uniquePeople.map((p) => <option key={p} value={p}>{p}</option>)}
-            </select>
+            <button type="button" onClick={() => { closeAllDD(); setShowPersonDD(!showPersonDD) }}
+              className="flex items-center gap-2 pl-8 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm cursor-pointer hover:bg-gray-50 transition">
+              <User className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <span className={selectedPeople.length === 0 ? 'text-gray-400' : 'text-gray-900'}>
+                {selectedPeople.length === 0 ? 'All People' : `${selectedPeople.length} person${selectedPeople.length > 1 ? 's' : ''}`}
+              </span>
+              <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showPersonDD ? 'rotate-180' : ''}`} />
+            </button>
+            {showPersonDD && (
+              <div className="absolute z-30 left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto min-w-[200px] animate-scale-in origin-top-left">
+                {uniquePeople.map((p) => {
+                  const sel = selectedPeople.includes(p)
+                  return (
+                    <button key={p} type="button" onClick={() => togglePerson(p)}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition cursor-pointer ${sel ? 'bg-violet-50 text-violet-700' : 'text-gray-700 hover:bg-gray-50'}`}>
+                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition ${sel ? 'bg-violet-600 border-violet-600' : 'border-gray-300'}`}>
+                        {sel && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                      <span className="truncate">{p}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
+          {hasFilters && (
+            <button onClick={() => { setSelectedStatuses([]); setSelectedSeverities([]); setSelectedApps([]); setSelectedPeople([]) }}
+              className="flex items-center gap-1.5 px-3 py-2.5 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition cursor-pointer font-medium">
+              <X className="w-3.5 h-3.5" /> Clear
+            </button>
+          )}
         </div>
       </div>
 
@@ -204,11 +293,11 @@ export default function Tasks() {
           </div>
           <p className="text-lg font-semibold text-gray-900">No tasks found</p>
           <p className="text-sm text-gray-500 mt-1 max-w-xs mx-auto">
-            {search || statusFilter !== 'all' || severityFilter !== 'all' || appFilter !== 'all' || personFilter !== 'all'
+            {search || hasFilters
               ? 'Try adjusting your search or filters'
               : 'Get started by creating your first task'}
           </p>
-          {!search && statusFilter === 'all' && severityFilter === 'all' && appFilter === 'all' && personFilter === 'all' && (
+          {!search && !hasFilters && (
             <button onClick={() => setShowPanel(true)} className="mt-4 inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition cursor-pointer">
               <Plus className="w-4 h-4" /> Create Task
             </button>

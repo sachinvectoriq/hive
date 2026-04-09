@@ -2,7 +2,7 @@ import { useState, useEffect, type FormEvent } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ArrowLeft, GitBranch, Layers, Users, Shield, Plus, Trash2,
-  ExternalLink, ChevronDown, ChevronRight, ClipboardList, Calendar, Search, Bell, Filter,
+  ExternalLink, ChevronDown, ChevronRight, ClipboardList, Calendar, Search, Bell, Filter, Check, X,
 } from 'lucide-react'
 import {
   getApplication, deleteApplication,
@@ -241,10 +241,13 @@ function ResourceGroupsTab({ app, onRefresh }: { app: AppDetail; onRefresh: () =
   const [alertResource, setAlertResource] = useState('')
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [search, setSearch] = useState('')
-  const [typeFilter, setTypeFilter] = useState('all')
+  const [selectedRgs, setSelectedRgs] = useState<string[]>([])
+  const [showRgDD, setShowRgDD] = useState(false)
 
   const existingGroups = Array.from(new Set(app.resources.map((r) => r.resource_group))).sort()
-  const uniqueTypes = Array.from(new Set(app.resources.map((r) => r.type).filter(Boolean))).sort()
+  const allRgNames = Array.from(new Set([...app.resources.map((r) => r.resource_group), ...app.alerts.map((a) => a.resource_group)])).sort()
+
+  const toggleRgFilter = (r: string) => setSelectedRgs((prev) => prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r])
 
   useEffect(() => {
     const groups = new Set(app.resources.map((r) => r.resource_group))
@@ -300,8 +303,8 @@ function ResourceGroupsTab({ app, onRefresh }: { app: AppDetail; onRefresh: () =
   app.alerts.forEach((a) => allGroups.add(a.resource_group))
   const groupNames = Array.from(allGroups).sort().filter((g) => {
     const matchesSearch = !search || g.toLowerCase().includes(search.toLowerCase())
-    const matchesType = typeFilter === 'all' || app.resources.some((r) => r.resource_group === g && r.type === typeFilter)
-    return matchesSearch && matchesType
+    const matchesRg = selectedRgs.length === 0 || selectedRgs.includes(g)
+    return matchesSearch && matchesRg
   })
 
   const filteredTypes = resourceTypes.filter((t) => t.toLowerCase().includes(typeSearch.toLowerCase()))
@@ -315,15 +318,39 @@ function ResourceGroupsTab({ app, onRefresh }: { app: AppDetail; onRefresh: () =
             <input type="text" placeholder="Filter resource groups..." value={search} onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" />
           </div>
-          {uniqueTypes.length > 0 && (
+          {allRgNames.length > 0 && (
             <div className="relative">
-              <Filter className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-              <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}
-                className="pl-8 pr-8 py-2 bg-white border border-gray-200 rounded-lg text-sm cursor-pointer focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none appearance-none transition">
-                <option value="all">All Types</option>
-                {uniqueTypes.map((t) => <option key={t} value={t}>{getAzureIcon(t).label}</option>)}
-              </select>
+              <button type="button" onClick={() => setShowRgDD(!showRgDD)}
+                className="flex items-center gap-2 pl-8 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm cursor-pointer hover:bg-gray-50 transition">
+                <Filter className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <span className={selectedRgs.length === 0 ? 'text-gray-400' : 'text-gray-900'}>
+                  {selectedRgs.length === 0 ? 'All Resource Groups' : `${selectedRgs.length} RG${selectedRgs.length > 1 ? 's' : ''}`}
+                </span>
+                <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showRgDD ? 'rotate-180' : ''}`} />
+              </button>
+              {showRgDD && (
+                <div className="absolute z-30 left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto min-w-[260px] animate-scale-in origin-top-left">
+                  {allRgNames.map((r) => {
+                    const sel = selectedRgs.includes(r)
+                    return (
+                      <button key={r} type="button" onClick={() => toggleRgFilter(r)}
+                        className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition cursor-pointer ${sel ? 'bg-sky-50 text-sky-700' : 'text-gray-700 hover:bg-gray-50'}`}>
+                        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition ${sel ? 'bg-sky-600 border-sky-600' : 'border-gray-300'}`}>
+                          {sel && <Check className="w-3 h-3 text-white" />}
+                        </div>
+                        <span className="truncate">{r}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
+          )}
+          {selectedRgs.length > 0 && (
+            <button onClick={() => setSelectedRgs([])}
+              className="flex items-center gap-1 px-2.5 py-2 text-xs text-red-500 hover:bg-red-50 rounded-lg transition cursor-pointer font-medium">
+              <X className="w-3 h-3" /> Clear
+            </button>
           )}
         </div>
         <div className="flex gap-3">
@@ -463,7 +490,7 @@ function ResourceGroupsTab({ app, onRefresh }: { app: AppDetail; onRefresh: () =
                   <div className="flex items-center gap-3">
                     {expanded ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
                     <Layers className="w-4 h-4 text-sky-500" />
-                    <span className="font-semibold text-gray-900">{gName}</span>
+                    <Link to={`/resource-groups/${encodeURIComponent(gName)}`} onClick={(e) => e.stopPropagation()} className="font-semibold text-gray-900 hover:text-indigo-600 transition">{gName}</Link>
                     <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{resources.length} resources</span>
                     {alerts.length > 0 && (
                       <span className="text-xs bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full">{alerts.length} alerts</span>

@@ -1,6 +1,6 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { GitBranch, ExternalLink, Search, Plus, X, Trash2, Filter } from 'lucide-react'
+import { GitBranch, ExternalLink, Search, Plus, X, Trash2, Filter, ChevronDown, Check } from 'lucide-react'
 import { listAllGitRepos, type GitRepoAggregate } from '../api/aggregates'
 import { listApplications, addGitRepo, deleteGitRepo } from '../api/applications'
 import type { ApplicationSummary } from '../types'
@@ -9,7 +9,8 @@ export default function GitRepos() {
   const [repos, setRepos] = useState<GitRepoAggregate[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [appFilter, setAppFilter] = useState('all')
+  const [selectedApps, setSelectedApps] = useState<string[]>([])
+  const [showAppDD, setShowAppDD] = useState(false)
   const [showPanel, setShowPanel] = useState(false)
 
   const [apps, setApps] = useState<ApplicationSummary[]>([])
@@ -37,11 +38,12 @@ export default function GitRepos() {
   }
 
   const uniqueApps = Array.from(new Set(repos.map((r) => r.application))).sort()
+  const toggleApp = (a: string) => setSelectedApps((prev) => prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a])
 
   const filtered = repos.filter((r) => {
     const q = search.toLowerCase()
     const matchesSearch = r.repo_name.toLowerCase().includes(q) || r.owner.toLowerCase().includes(q) || r.application.toLowerCase().includes(q)
-    const matchesApp = appFilter === 'all' || r.application === appFilter
+    const matchesApp = selectedApps.length === 0 || selectedApps.includes(r.application)
     return matchesSearch && matchesApp
   })
 
@@ -66,15 +68,33 @@ export default function GitRepos() {
             className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition" />
         </div>
         <div className="relative">
-          <Filter className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-          <select value={appFilter} onChange={(e) => setAppFilter(e.target.value)}
-            className="pl-8 pr-8 py-2.5 bg-white border border-gray-200 rounded-xl text-sm cursor-pointer focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none appearance-none transition">
-            <option value="all">All Applications</option>
-            {uniqueApps.map((a) => <option key={a} value={a}>{a}</option>)}
-          </select>
+          <button type="button" onClick={() => setShowAppDD(!showAppDD)}
+            className="flex items-center gap-2 pl-8 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm cursor-pointer hover:bg-gray-50 transition">
+            <Filter className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <span className={selectedApps.length === 0 ? 'text-gray-400' : 'text-gray-900'}>
+              {selectedApps.length === 0 ? 'All Applications' : `${selectedApps.length} app${selectedApps.length > 1 ? 's' : ''}`}
+            </span>
+            <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showAppDD ? 'rotate-180' : ''}`} />
+          </button>
+          {showAppDD && (
+            <div className="absolute z-30 left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto min-w-[220px] animate-scale-in origin-top-left">
+              {uniqueApps.map((a) => {
+                const sel = selectedApps.includes(a)
+                return (
+                  <button key={a} type="button" onClick={() => toggleApp(a)}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition cursor-pointer ${sel ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-50'}`}>
+                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition ${sel ? 'bg-indigo-600 border-indigo-600' : 'border-gray-300'}`}>
+                      {sel && <Check className="w-3 h-3 text-white" />}
+                    </div>
+                    <span className="truncate">{a}</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
-        {appFilter !== 'all' && (
-          <button onClick={() => setAppFilter('all')}
+        {selectedApps.length > 0 && (
+          <button onClick={() => setSelectedApps([])}
             className="flex items-center gap-1.5 px-3 py-2.5 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition cursor-pointer font-medium">
             <X className="w-3.5 h-3.5" /> Clear
           </button>
