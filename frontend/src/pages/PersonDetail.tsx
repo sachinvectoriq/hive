@@ -51,7 +51,7 @@ export default function PersonDetail() {
       <div className="bg-white rounded-2xl border border-gray-200 p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-xl transition cursor-pointer">
+            <button onClick={() => navigate('/people')} className="p-2 hover:bg-gray-100 rounded-xl transition cursor-pointer">
               <ArrowLeft className="w-5 h-5 text-gray-600" />
             </button>
             <div className="flex items-center gap-4">
