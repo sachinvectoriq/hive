@@ -14,6 +14,7 @@ interface AzureIconConfig {
 }
 
 const AZURE_ICON_MAP: Record<string, AzureIconConfig> = {
+  // Legacy microsoft.* keys
   'microsoft.web/sites':                        { icon: Globe,       bg: 'bg-blue-50',     text: 'text-blue-600',    label: 'App Service' },
   'microsoft.web/staticsites':                  { icon: Globe,       bg: 'bg-sky-50',      text: 'text-sky-600',     label: 'Static Web App' },
   'microsoft.search/searchservices':            { icon: Search,      bg: 'bg-purple-50',   text: 'text-purple-600',  label: 'Search Service' },
@@ -50,6 +51,23 @@ const AZURE_ICON_MAP: Record<string, AzureIconConfig> = {
   'microsoft.communication/communicationservices': { icon: MessageSquare, bg: 'bg-blue-50', text: 'text-blue-600',  label: 'Communication' },
   'microsoft.botservice/botservices':           { icon: Bot,         bg: 'bg-green-50',    text: 'text-green-600',   label: 'Bot Service' },
   'microsoft.openai/accounts':                  { icon: Sparkles,    bg: 'bg-emerald-50',  text: 'text-emerald-600', label: 'OpenAI' },
+
+  // Friendly display names (from resource type dropdown)
+  'azure app service (web app)':                { icon: Globe,       bg: 'bg-blue-50',     text: 'text-blue-600',    label: 'Azure App Service (Web app)' },
+  'app service plan':                           { icon: ServerCog,   bg: 'bg-blue-50',     text: 'text-blue-600',    label: 'App Service Plan' },
+  'static web app':                             { icon: Globe,       bg: 'bg-sky-50',      text: 'text-sky-600',     label: 'Static Web App' },
+  'azure cosmosdb for postgresql cluster':      { icon: Database,    bg: 'bg-blue-50',     text: 'text-blue-600',    label: 'Azure CosmosDB for PostgreSQL Cluster' },
+  'azure cosmos db database':                   { icon: Database,    bg: 'bg-blue-50',     text: 'text-blue-600',    label: 'Azure Cosmos DB database' },
+  'storage account':                            { icon: HardDrive,   bg: 'bg-emerald-50',  text: 'text-emerald-600', label: 'Storage Account' },
+  'ai search':                                  { icon: Search,      bg: 'bg-purple-50',   text: 'text-purple-600',  label: 'AI Search' },
+  'azure ai foundry':                           { icon: Cpu,         bg: 'bg-indigo-50',   text: 'text-indigo-600',  label: 'Azure AI Foundry' },
+  'azure ai services multi-service account':    { icon: Sparkles,    bg: 'bg-violet-50',   text: 'text-violet-600',  label: 'Azure AI services multi-service account' },
+  'computer vision':                            { icon: Eye,         bg: 'bg-green-50',    text: 'text-green-600',   label: 'Computer vision' },
+  'logic app':                                  { icon: Workflow,    bg: 'bg-blue-50',     text: 'text-blue-600',    label: 'Logic App' },
+  'application insights':                       { icon: BarChart3,   bg: 'bg-purple-50',   text: 'text-purple-600',  label: 'Application Insights' },
+  'log analytics workspace':                    { icon: BarChart3,   bg: 'bg-blue-50',     text: 'text-blue-600',    label: 'Log Analytics Workspace' },
+  'translator':                                 { icon: MessageSquare, bg: 'bg-blue-50',   text: 'text-blue-600',    label: 'Translator' },
+  'document intelligence':                      { icon: Brain,       bg: 'bg-violet-50',   text: 'text-violet-600',  label: 'Document intelligence' },
 }
 
 const DEFAULT_ICON: AzureIconConfig = { icon: ServerCog, bg: 'bg-gray-50', text: 'text-gray-500', label: 'Resource' }
