@@ -1,7 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Users, Search, Plus, X, Trash2, ArrowRight, Filter } from 'lucide-react'
-import { listAllPeople, type PersonAggregate } from '../api/aggregates'
+import { Users, Search, Plus, X, Trash2, ArrowRight, Filter, ChevronDown, Check } from 'lucide-react'
+import { listAllPeople, listResourceGroups, type PersonAggregate, type ResourceGroupAggregate } from '../api/aggregates'
 import { listApplications, addPerson, deletePerson } from '../api/applications'
 import type { ApplicationSummary } from '../types'
 
@@ -13,23 +13,32 @@ export default function People() {
   const [showPanel, setShowPanel] = useState(false)
 
   const [apps, setApps] = useState<ApplicationSummary[]>([])
-  const [selectedApp, setSelectedApp] = useState<number | ''>('')
+  const [resourceGroups, setResourceGroups] = useState<ResourceGroupAggregate[]>([])
+  const [selectedApps, setSelectedApps] = useState<number[]>([])
+  const [showAppDropdown, setShowAppDropdown] = useState(false)
   const [name, setName] = useState('')
-  const [appsInvolved, setAppsInvolved] = useState('')
-  const [rgsInvolved, setRgsInvolved] = useState('')
+  const [selectedRgs, setSelectedRgs] = useState<string[]>([])
+  const [showRgDropdown, setShowRgDropdown] = useState(false)
   const [permissions, setPermissions] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const load = () => { setLoading(true); listAllPeople().then(setPeople).finally(() => setLoading(false)) }
   useEffect(load, [])
   useEffect(() => { listApplications().then(setApps) }, [])
+  useEffect(() => { listResourceGroups().then(setResourceGroups) }, [])
+
+  const toggleApp = (id: number) => setSelectedApps((prev) => prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id])
+  const toggleRg = (name: string) => setSelectedRgs((prev) => prev.includes(name) ? prev.filter((r) => r !== name) : [...prev, name])
 
   const handleAdd = async (e: FormEvent) => {
     e.preventDefault()
-    if (!selectedApp || !name.trim()) return
+    if (selectedApps.length === 0 || !name.trim()) return
     setSubmitting(true)
-    await addPerson(Number(selectedApp), { name: name.trim(), applications_involved: appsInvolved.trim(), resource_groups_involved: rgsInvolved.trim(), permissions: permissions.trim() })
-    setSelectedApp(''); setName(''); setAppsInvolved(''); setRgsInvolved(''); setPermissions(''); setShowPanel(false); setSubmitting(false)
+    const primaryAppId = selectedApps[0]
+    const appsInvolved = selectedApps.map((id) => apps.find((a) => a.id === id)?.name).filter(Boolean).join(', ')
+    const rgsInvolved = selectedRgs.join(', ')
+    await addPerson(primaryAppId, { name: name.trim(), applications_involved: appsInvolved, resource_groups_involved: rgsInvolved, permissions: permissions.trim() })
+    setSelectedApps([]); setName(''); setSelectedRgs([]); setPermissions(''); setShowPanel(false); setSubmitting(false)
     load()
   }
   const handleDelete = async (p: PersonAggregate, e: React.MouseEvent) => {
@@ -167,28 +176,94 @@ export default function People() {
               <button onClick={() => setShowPanel(false)} className="p-2 hover:bg-gray-100 rounded-lg transition cursor-pointer"><X className="w-5 h-5 text-gray-400" /></button>
             </div>
             <form onSubmit={handleAdd} className="flex-1 overflow-y-auto p-6 space-y-5">
+              {/* Multi-select Applications */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Application *</label>
-                <select value={selectedApp} onChange={(e) => setSelectedApp(e.target.value ? Number(e.target.value) : '')} required
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none cursor-pointer transition">
-                  <option value="">Select application...</option>
-                  {apps.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                </select>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Applications * <span className="text-gray-400 font-normal">(select one or more)</span></label>
+                <div className="relative">
+                  <button type="button" onClick={() => { setShowAppDropdown(!showAppDropdown); setShowRgDropdown(false) }}
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-left flex items-center justify-between cursor-pointer focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition">
+                    <span className={selectedApps.length === 0 ? 'text-gray-400' : 'text-gray-900'}>
+                      {selectedApps.length === 0 ? 'Select applications...' : selectedApps.map((id) => apps.find((a) => a.id === id)?.name).filter(Boolean).join(', ')}
+                    </span>
+                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showAppDropdown ? 'rotate-180' : ''}`} />
+                  </button>
+                  {showAppDropdown && (
+                    <div className="absolute z-30 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto animate-scale-in origin-top">
+                      {apps.map((a) => {
+                        const selected = selectedApps.includes(a.id)
+                        return (
+                          <button key={a.id} type="button" onClick={() => toggleApp(a.id)}
+                            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition cursor-pointer ${selected ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-50'}`}>
+                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition ${selected ? 'bg-indigo-600 border-indigo-600' : 'border-gray-300'}`}>
+                              {selected && <Check className="w-3 h-3 text-white" />}
+                            </div>
+                            {a.name}
+                          </button>
+                        )
+                      })}
+                      {apps.length === 0 && <p className="px-4 py-3 text-sm text-gray-400">No applications found</p>}
+                    </div>
+                  )}
+                </div>
+                {selectedApps.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {selectedApps.map((id) => {
+                      const app = apps.find((a) => a.id === id)
+                      return app ? (
+                        <span key={id} className="inline-flex items-center gap-1 text-xs bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg font-medium">
+                          {app.name}
+                          <button type="button" onClick={() => toggleApp(id)} className="hover:text-red-500 transition cursor-pointer"><X className="w-3 h-3" /></button>
+                        </span>
+                      ) : null
+                    })}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Name *</label>
                 <input type="text" placeholder="Full name" value={name} onChange={(e) => setName(e.target.value)} required
                   className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition" />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Applications Involved</label>
-                <input type="text" placeholder="Comma-separated app names" value={appsInvolved} onChange={(e) => setAppsInvolved(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition" />
-              </div>
+              {/* Multi-select Resource Groups */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Resource Groups Involved</label>
-                <input type="text" placeholder="Comma-separated resource groups" value={rgsInvolved} onChange={(e) => setRgsInvolved(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition" />
+                <div className="relative">
+                  <button type="button" onClick={() => { setShowRgDropdown(!showRgDropdown); setShowAppDropdown(false) }}
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-left flex items-center justify-between cursor-pointer focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition">
+                    <span className={selectedRgs.length === 0 ? 'text-gray-400' : 'text-gray-900'}>
+                      {selectedRgs.length === 0 ? 'Select resource groups...' : selectedRgs.join(', ')}
+                    </span>
+                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showRgDropdown ? 'rotate-180' : ''}`} />
+                  </button>
+                  {showRgDropdown && (
+                    <div className="absolute z-30 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto animate-scale-in origin-top">
+                      {resourceGroups.map((rg) => {
+                        const selected = selectedRgs.includes(rg.name)
+                        return (
+                          <button key={rg.name} type="button" onClick={() => toggleRg(rg.name)}
+                            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition cursor-pointer ${selected ? 'bg-sky-50 text-sky-700' : 'text-gray-700 hover:bg-gray-50'}`}>
+                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition ${selected ? 'bg-sky-600 border-sky-600' : 'border-gray-300'}`}>
+                              {selected && <Check className="w-3 h-3 text-white" />}
+                            </div>
+                            <span>{rg.name}</span>
+                            <span className="ml-auto text-[10px] text-gray-400">{rg.resources.length} resources</span>
+                          </button>
+                        )
+                      })}
+                      {resourceGroups.length === 0 && <p className="px-4 py-3 text-sm text-gray-400">No resource groups found</p>}
+                    </div>
+                  )}
+                </div>
+                {selectedRgs.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {selectedRgs.map((rg) => (
+                      <span key={rg} className="inline-flex items-center gap-1 text-xs bg-sky-50 text-sky-700 px-2.5 py-1 rounded-lg font-medium">
+                        {rg}
+                        <button type="button" onClick={() => toggleRg(rg)} className="hover:text-red-500 transition cursor-pointer"><X className="w-3 h-3" /></button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Permissions</label>
@@ -197,7 +272,7 @@ export default function People() {
               </div>
               <div className="pt-4 border-t border-gray-100 flex justify-end gap-3">
                 <button type="button" onClick={() => setShowPanel(false)} className="px-4 py-2.5 text-sm text-gray-600 hover:text-gray-800 font-medium cursor-pointer transition">Cancel</button>
-                <button type="submit" disabled={submitting || !selectedApp || !name.trim()}
+                <button type="submit" disabled={submitting || selectedApps.length === 0 || !name.trim()}
                   className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white text-sm font-medium rounded-xl transition shadow-sm cursor-pointer">
                   {submitting ? 'Adding...' : 'Add Person'}
                 </button>
