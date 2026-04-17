@@ -334,8 +334,7 @@ export default function ResourceGroupDetail() {
                   <span className={typeFilters.length === 0 ? 'text-gray-400' : 'text-gray-900'}>{typeFilters.length === 0 ? 'Filter by type' : `${typeFilters.length} type${typeFilters.length > 1 ? 's' : ''}`}</span>
                   <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showTypeDD ? 'rotate-180' : ''}`} />
                 </button>
-                {showTypeDD && (
-                  <div className="absolute z-30 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto min-w-[220px] animate-scale-in origin-top-right">
+                <div className={`absolute z-30 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto min-w-[220px] filter-dd ${showTypeDD ? 'filter-dd-open' : 'filter-dd-closed'} origin-top-right`}>
                     {uniqueTypes.map((t) => {
                       const selected = typeFilters.includes(t)
                       return (
@@ -349,8 +348,7 @@ export default function ResourceGroupDetail() {
                         </button>
                       )
                     })}
-                  </div>
-                )}
+                </div>
               </div>
             )}
             {typeFilters.length > 0 && (

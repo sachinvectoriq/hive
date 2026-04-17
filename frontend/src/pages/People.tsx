@@ -19,7 +19,8 @@ export default function People() {
   const [name, setName] = useState('')
   const [selectedRgs, setSelectedRgs] = useState<string[]>([])
   const [showRgDropdown, setShowRgDropdown] = useState(false)
-  const [permissions, setPermissions] = useState('')
+  const [selectedPerms, setSelectedPerms] = useState<string[]>([])
+  const [showPermDropdown, setShowPermDropdown] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editFields, setEditFields] = useState({ name: '', permissions: '' })
@@ -31,6 +32,9 @@ export default function People() {
 
   const toggleApp = (id: number) => setSelectedApps((prev) => prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id])
   const toggleRg = (name: string) => setSelectedRgs((prev) => prev.includes(name) ? prev.filter((r) => r !== name) : [...prev, name])
+  const togglePerm = (p: string) => setSelectedPerms((prev) => prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p])
+
+  const PERMISSION_OPTIONS = ['Owner', 'Contributor', 'Reader', 'User Access Administrator', 'Network Contributor', 'Storage Blob Data Contributor', 'Storage Blob Data Reader', 'Key Vault Administrator', 'Key Vault Secrets User', 'Cognitive Services User', 'Monitoring Contributor', 'Monitoring Reader', 'Log Analytics Contributor', 'Logic App Contributor', 'Custom Role']
 
   const handleAdd = async (e: FormEvent) => {
     e.preventDefault()
@@ -39,8 +43,9 @@ export default function People() {
     const primaryAppId = selectedApps[0]
     const appsInvolved = selectedApps.map((id) => apps.find((a) => a.id === id)?.name).filter(Boolean).join(', ')
     const rgsInvolved = selectedRgs.join(', ')
-    await addPerson(primaryAppId, { name: name.trim(), applications_involved: appsInvolved, resource_groups_involved: rgsInvolved, permissions: permissions.trim() })
-    setSelectedApps([]); setName(''); setSelectedRgs([]); setPermissions(''); setShowPanel(false); setSubmitting(false)
+    const permsInvolved = selectedPerms.join(', ')
+    await addPerson(primaryAppId, { name: name.trim(), applications_involved: appsInvolved, resource_groups_involved: rgsInvolved, permissions: permsInvolved })
+    setSelectedApps([]); setName(''); setSelectedRgs([]); setSelectedPerms([]); setShowPanel(false); setSubmitting(false)
     load()
   }
   const handleDelete = async (p: PersonAggregate, e: React.MouseEvent) => {
@@ -309,8 +314,41 @@ export default function People() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Permissions</label>
-                <textarea placeholder="e.g. Contributor on rg-prod, Reader on kv-prod" value={permissions} onChange={(e) => setPermissions(e.target.value)} rows={3}
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none resize-none transition" />
+                <div className="relative">
+                  <button type="button" onClick={() => { setShowPermDropdown(!showPermDropdown); setShowAppDropdown(false); setShowRgDropdown(false) }}
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-left flex items-center justify-between cursor-pointer focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition">
+                    <span className={selectedPerms.length === 0 ? 'text-gray-400' : 'text-gray-900'}>
+                      {selectedPerms.length === 0 ? 'Select permissions...' : selectedPerms.join(', ')}
+                    </span>
+                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showPermDropdown ? 'rotate-180' : ''}`} />
+                  </button>
+                  {showPermDropdown && (
+                    <div className="absolute z-30 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto animate-scale-in origin-top">
+                      {PERMISSION_OPTIONS.map((perm) => {
+                        const selected = selectedPerms.includes(perm)
+                        return (
+                          <button key={perm} type="button" onClick={() => togglePerm(perm)}
+                            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition cursor-pointer ${selected ? 'bg-amber-50 text-amber-700' : 'text-gray-700 hover:bg-gray-50'}`}>
+                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition ${selected ? 'bg-amber-600 border-amber-600' : 'border-gray-300'}`}>
+                              {selected && <Check className="w-3 h-3 text-white" />}
+                            </div>
+                            {perm}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+                {selectedPerms.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {selectedPerms.map((perm) => (
+                      <span key={perm} className="inline-flex items-center gap-1 text-xs bg-amber-50 text-amber-700 px-2.5 py-1 rounded-lg font-medium">
+                        {perm}
+                        <button type="button" onClick={() => togglePerm(perm)} className="hover:text-red-500 transition cursor-pointer"><X className="w-3 h-3" /></button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="pt-4 border-t border-gray-100 flex justify-end gap-3">
                 <button type="button" onClick={() => setShowPanel(false)} className="px-4 py-2.5 text-sm text-gray-600 hover:text-gray-800 font-medium cursor-pointer transition">Cancel</button>

@@ -192,8 +192,7 @@ export default function Tasks() {
               </span>
               <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showStatusDD ? 'rotate-180' : ''}`} />
             </button>
-            {showStatusDD && (
-              <div className="absolute z-30 left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl min-w-[180px] animate-scale-in origin-top-left">
+            <div className={`absolute z-30 left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl min-w-[180px] filter-dd ${showStatusDD ? 'filter-dd-open' : 'filter-dd-closed'} origin-top-left`}>
                 {[{ v: 'not-started', l: 'Not Started' }, { v: 'in-progress', l: 'In Progress' }, { v: 'completed', l: 'Completed' }].map(({ v, l }) => {
                   const sel = selectedStatuses.includes(v)
                   return (
@@ -206,8 +205,7 @@ export default function Tasks() {
                     </button>
                   )
                 })}
-              </div>
-            )}
+            </div>
           </div>
           {/* Severity multi-select */}
           <div className="relative">
@@ -219,8 +217,7 @@ export default function Tasks() {
               </span>
               <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showSeverityDD ? 'rotate-180' : ''}`} />
             </button>
-            {showSeverityDD && (
-              <div className="absolute z-30 left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl min-w-[180px] animate-scale-in origin-top-left">
+            <div className={`absolute z-30 left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl min-w-[180px] filter-dd ${showSeverityDD ? 'filter-dd-open' : 'filter-dd-closed'} origin-top-left`}>
                 {[{ v: 'low', l: 'Low' }, { v: 'medium', l: 'Medium' }, { v: 'high', l: 'High' }, { v: 'critical', l: 'Critical' }].map(({ v, l }) => {
                   const sel = selectedSeverities.includes(v)
                   return (
@@ -233,8 +230,7 @@ export default function Tasks() {
                     </button>
                   )
                 })}
-              </div>
-            )}
+            </div>
           </div>
           {/* App multi-select */}
           <div className="relative">
@@ -246,8 +242,7 @@ export default function Tasks() {
               </span>
               <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showAppDD ? 'rotate-180' : ''}`} />
             </button>
-            {showAppDD && (
-              <div className="absolute z-30 left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto min-w-[220px] animate-scale-in origin-top-left">
+            <div className={`absolute z-30 left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto min-w-[220px] filter-dd ${showAppDD ? 'filter-dd-open' : 'filter-dd-closed'} origin-top-left`}>
                 {uniqueApps.map((a) => {
                   const sel = selectedApps.includes(a)
                   return (
@@ -260,8 +255,7 @@ export default function Tasks() {
                     </button>
                   )
                 })}
-              </div>
-            )}
+            </div>
           </div>
           {/* Person multi-select */}
           <div className="relative">
@@ -273,8 +267,7 @@ export default function Tasks() {
               </span>
               <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showPersonDD ? 'rotate-180' : ''}`} />
             </button>
-            {showPersonDD && (
-              <div className="absolute z-30 left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto min-w-[200px] animate-scale-in origin-top-left">
+            <div className={`absolute z-30 left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto min-w-[200px] filter-dd ${showPersonDD ? 'filter-dd-open' : 'filter-dd-closed'} origin-top-left`}>
                 {uniquePeople.map((p) => {
                   const sel = selectedPeople.includes(p)
                   return (
@@ -287,8 +280,7 @@ export default function Tasks() {
                     </button>
                   )
                 })}
-              </div>
-            )}
+            </div>
           </div>
           {hasFilters && (
             <button onClick={() => { setSelectedStatuses([]); setSelectedSeverities([]); setSelectedApps([]); setSelectedPeople([]) }}
@@ -427,11 +419,11 @@ export default function Tasks() {
         </div>
       )}
 
-      {/* Slide-in Panel */}
+      {/* Add Task Modal */}
       {showPanel && (
-        <div className="fixed inset-0 z-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={() => setShowPanel(false)} />
-          <div className="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl animate-slide-in-right flex flex-col">
+          <div className="relative w-full max-w-4xl mx-4 bg-white rounded-2xl shadow-2xl animate-scale-in flex flex-col max-h-[90vh]">
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">New Task</h2>
@@ -439,26 +431,28 @@ export default function Tasks() {
               </div>
               <button onClick={() => setShowPanel(false)} className="p-2 hover:bg-gray-100 rounded-lg transition cursor-pointer"><X className="w-5 h-5 text-gray-400" /></button>
             </div>
-            <form onSubmit={handleAdd} className="flex-1 overflow-y-auto p-6 space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Application *</label>
-                <select value={selectedApp} onChange={(e) => setSelectedApp(e.target.value ? Number(e.target.value) : '')} required
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none cursor-pointer transition">
-                  <option value="">Select application...</option>
-                  {apps.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Title *</label>
-                <input type="text" placeholder="What needs to be done?" value={title} onChange={(e) => setTitle(e.target.value)} required
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition" />
+            <form onSubmit={handleAdd} className="overflow-y-auto p-6 space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Application *</label>
+                  <select value={selectedApp} onChange={(e) => setSelectedApp(e.target.value ? Number(e.target.value) : '')} required
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none cursor-pointer transition">
+                    <option value="">Select application...</option>
+                    {apps.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Title *</label>
+                  <input type="text" placeholder="What needs to be done?" value={title} onChange={(e) => setTitle(e.target.value)} required
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition" />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
-                <textarea placeholder="Add details..." value={description} onChange={(e) => setDescription(e.target.value)} rows={3}
+                <textarea placeholder="Add details..." value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
                   className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none resize-none transition" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Severity</label>
                   <select value={severity} onChange={(e) => setSeverity(e.target.value)}

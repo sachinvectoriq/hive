@@ -245,8 +245,7 @@ export default function ResourceGroups() {
               </span>
               <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showAppDD ? 'rotate-180' : ''}`} />
             </button>
-            {showAppDD && (
-              <div className="absolute z-30 left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto min-w-[220px] animate-scale-in origin-top-left">
+            <div className={`absolute z-30 left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto min-w-[220px] filter-dd ${showAppDD ? 'filter-dd-open' : 'filter-dd-closed'} origin-top-left`}>
                 {uniqueApps.map((a) => {
                   const sel = selectedApps.includes(a)
                   return (
@@ -259,8 +258,7 @@ export default function ResourceGroups() {
                     </button>
                   )
                 })}
-              </div>
-            )}
+            </div>
           </div>
           <div className="relative">
             <button type="button" onClick={() => { setShowRgDD(!showRgDD); setShowAppDD(false) }}
@@ -271,8 +269,7 @@ export default function ResourceGroups() {
               </span>
               <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showRgDD ? 'rotate-180' : ''}`} />
             </button>
-            {showRgDD && (
-              <div className="absolute z-30 left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto min-w-[260px] animate-scale-in origin-top-left">
+            <div className={`absolute z-30 left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto min-w-[260px] filter-dd ${showRgDD ? 'filter-dd-open' : 'filter-dd-closed'} origin-top-left`}>
                 {uniqueRgs.map((r) => {
                   const sel = selectedRgs.includes(r)
                   return (
@@ -285,8 +282,7 @@ export default function ResourceGroups() {
                     </button>
                   )
                 })}
-              </div>
-            )}
+            </div>
           </div>
           {(selectedApps.length > 0 || selectedRgs.length > 0) && (
             <button onClick={() => { setSelectedApps([]); setSelectedRgs([]) }}
@@ -352,7 +348,7 @@ export default function ResourceGroups() {
                         <MoreHorizontal className="w-4 h-4" />
                       </button>
                       {activeMenu === g.name && (
-                        <div className="absolute right-0 top-full mt-1 z-30 bg-white rounded-xl border border-gray-200 shadow-xl py-1 min-w-[200px] animate-scale-in origin-top-right">
+                        <div className="absolute right-0 top-full mt-1 z-30 bg-white rounded-xl border border-gray-200 shadow-xl py-1 min-w-[200px] filter-dd filter-dd-open origin-top-right">
                           <button onClick={() => openInlineAdd(g.name, 'resource')} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition cursor-pointer">
                             <Server className="w-3.5 h-3.5" /> Add Resource
                           </button>

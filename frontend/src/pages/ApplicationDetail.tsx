@@ -413,8 +413,7 @@ function ResourceGroupsTab({ app, onRefresh }: { app: AppDetail; onRefresh: () =
                 </span>
                 <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showRgDD ? 'rotate-180' : ''}`} />
               </button>
-              {showRgDD && (
-                <div className="absolute z-30 left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto min-w-[260px] animate-scale-in origin-top-left">
+              <div className={`absolute z-30 left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto min-w-[260px] filter-dd ${showRgDD ? 'filter-dd-open' : 'filter-dd-closed'} origin-top-left`}>
                   {allRgNames.map((r) => {
                     const sel = selectedRgs.includes(r)
                     return (
@@ -427,8 +426,7 @@ function ResourceGroupsTab({ app, onRefresh }: { app: AppDetail; onRefresh: () =
                       </button>
                     )
                   })}
-                </div>
-              )}
+              </div>
             </div>
           )}
           {selectedRgs.length > 0 && (

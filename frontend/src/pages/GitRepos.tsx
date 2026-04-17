@@ -90,8 +90,7 @@ export default function GitRepos() {
             </span>
             <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showAppDD ? 'rotate-180' : ''}`} />
           </button>
-          {showAppDD && (
-            <div className="absolute z-30 left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto min-w-[220px] animate-scale-in origin-top-left">
+          <div className={`absolute z-30 left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto min-w-[220px] filter-dd ${showAppDD ? 'filter-dd-open' : 'filter-dd-closed'} origin-top-left`}>
               {uniqueApps.map((a) => {
                 const sel = selectedApps.includes(a)
                 return (
@@ -104,8 +103,7 @@ export default function GitRepos() {
                   </button>
                 )
               })}
-            </div>
-          )}
+          </div>
         </div>
         {selectedApps.length > 0 && (
           <button onClick={() => setSelectedApps([])}
